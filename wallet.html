@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FLEXY - Wallet</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/loader.js"></script>
+    <style>
+        /* Virtual Card Mockup Styling */
+        .credit-card-mockup {
+            width: 100%;
+            max-width: 380px;
+            height: 220px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-lg);
+            padding: 1.75rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+        .credit-card-mockup::before {
+            content: '';
+            position: absolute;
+            top: -20px;
+            right: -20px;
+            width: 120px;
+            height: 120px;
+            background: radial-gradient(circle, var(--primary-glow-thick) 0%, rgba(0,0,0,0) 70%);
+            z-index: 1;
+        }
+        .card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            z-index: 5;
+        }
+        .card-chip {
+            width: 42px;
+            height: 32px;
+            background: linear-gradient(135deg, #F3F4F6 0%, #9CA3AF 100%);
+            border-radius: var(--radius-sm);
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+        .card-top h4 {
+            font-size: 1rem;
+            color: var(--primary);
+            font-weight: 800;
+            letter-spacing: 0.1em;
+        }
+        .card-number {
+            font-family: 'Space Grotesk', monospace;
+            font-size: 1.3rem;
+            letter-spacing: 0.15em;
+            color: var(--text-primary);
+            margin: 1.5rem 0;
+            z-index: 5;
+        }
+        .card-bottom {
+            display: flex;
+            justify-content: space-between;
+            z-index: 5;
+        }
+        .card-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+        }
+        .card-val {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        /* Modals style adjustments */
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        .preset-amount {
+            background: var(--dark-2);
+            border: 1px solid var(--border-glass);
+            color: var(--text-secondary);
+            padding: 0.6rem;
+            font-size: 0.85rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-weight: 600;
+            transition: all var(--transition-fast);
+        }
+        .preset-amount:hover {
+            border-color: var(--primary);
+            color: var(--text-primary);
+            background: var(--primary-glow);
+        }
+        
+        /* Method selection */
+        .method-options {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+        .method-option input {
+            display: none;
+        }
+        .method-card {
+            background: var(--dark-2);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            padding: 0.85rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        .method-option input:checked + .method-card {
+            border-color: var(--primary);
+            background: var(--primary-glow);
+        }
+        .method-icon {
+            font-size: 1.5rem;
+        }
+        .method-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        .method-desc {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+        
+        .field-error {
+            color: var(--danger);
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+        }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body>
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-container container">
+            <div class="logo-section" onclick="window.location.href='home.html'">
+                <button class="back-btn" onclick="window.history.back(); event.stopPropagation();" style="background: none; border: none; font-size: 1.25rem; color: var(--text-primary); cursor: pointer; margin-right: 0.5rem;">←</button>
+                <div class="logo-icon" aria-hidden="true" style="color: var(--primary);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 100%; height: 100%;">
+    <path d="m15 5 4 4" />
+    <path d="m11 9 4 4" />
+    <path d="m13 7-8 8" />
+    <path d="M9 11l-4 4" />
+    <path d="m13 13-7 7" />
+    <path d="M20 20H10" />
+</svg>
+                </div>
+                <div>
+                    <h1 class="app-logo">FLEXY</h1>
+                    <p class="app-tagline">Every Item Finds Its Value</p>
+                </div>
+            </div>
+            
+            <div class="header-actions">
+    <button class="header-btn" onclick="window.location.href='home.html'">Home</button>
+    <button class="header-btn" onclick="window.location.href='explore.html'">Explore</button>
+    <button class="header-btn" onclick="window.location.href='communities.html'">Communities</button>
+    <button class="header-btn" onclick="window.location.href='collections.html'">Collections</button>
+    <button class="header-btn" onclick="window.location.href='auctions.html'">Auctions</button>
+    <button class="header-btn" onclick="window.location.href='messages.html'">Messages</button>
+    <button class="header-btn" onclick="window.location.href='wallet.html'">Wallet</button>
+    <button class="header-btn" onclick="window.location.href='profile.html'">Profile</button>
+</div>
+          </div>
+      </header>
+    
+    <!-- Main Content -->
+    <main class="main-container container" style="padding-top: 2rem; padding-bottom: 4rem;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: start; margin-bottom: 3rem;">
+            <!-- Balance Card -->
+            <section class="balance-section">
+                <div class="balance-card card glass-card" style="padding: 2.5rem; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <div class="balance-header">
+                            <h3>Available Balance</h3>
+                            <button class="btn-ghost" onclick="refreshBalance()" style="padding: 0.35rem 0.6rem; border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 600;">Refresh <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg></button>
+                        </div>
+                        <div class="balance-amount" id="balance-amount" style="color: var(--primary); text-shadow: 0 0 20px var(--primary-glow-thick);">₹0</div>
+                    </div>
+                    <div style="margin-top: 1.5rem; border-top: 1px solid var(--border-subtle); padding-top: 1.25rem;">
+                        <div class="balance-subtext" style="color: var(--text-secondary); font-size: 0.9rem;">For bidding and purchases</div>
+                        <div class="balance-reserved" id="reserved-amount" style="color: var(--danger); font-weight: 600; font-size: 0.85rem; margin-top: 0.25rem;">Reserved for bids: ₹0</div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Virtual Card Mockup -->
+            <section>
+                <h3 style="margin-bottom: 1rem; font-size: 1.15rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Your FLEXY Card</h3>
+                <div class="credit-card-mockup">
+                    <div class="card-top">
+                        <div class="card-chip"></div>
+                        <h4>FLEXY</h4>
+                    </div>
+                    <div class="card-number">•••• •••• •••• 1024</div>
+                    <div class="card-bottom">
+                        <div>
+                            <div class="card-label">Card Holder</div>
+                            <div class="card-val" id="card-holder-name">Member</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div class="card-label">Expiry</div>
+                            <div class="card-val">12 / 29</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+        
+        <!-- Quick Actions -->
+        <section class="actions-section">
+            <h3 style="margin-bottom: 1.5rem; font-size: 1.35rem;">Quick Actions</h3>
+            <div class="actions-grid">
+                <button class="action-card" onclick="addMoney()">
+                    <div class="action-icon" style="color: var(--success);">+</div>
+                    <div class="action-label">Add Money</div>
+                </button>
+                <button class="action-card" onclick="withdrawMoney()">
+                    <div class="action-icon">→</div>
+                    <div class="action-label">Withdraw</div>
+                </button>
+                <button class="action-card" onclick="sendMoney()">
+                    <div class="action-icon">↑</div>
+                    <div class="action-label">Send</div>
+                </button>
+                <button class="action-card" onclick="viewCards()">
+                    <div class="action-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg></div>
+                    <div class="action-label">Cards</div>
+                </button>
+            </div>
+        </section>
+        
+        <!-- Spending Trends Chart -->
+        <section class="analytics-chart-container glass-card" style="margin-top: 3rem;">
+            <div class="analytics-chart-header">
+                <div>
+                    <h3>Wallet Activity Trends</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem;">Historical balance updates and events</p>
+                </div>
+            </div>
+            <canvas id="wallet-chart" class="analytics-canvas"></canvas>
+        </section>
+        
+        <!-- Recent Transactions -->
+        <section class="transactions-section" style="margin-top: 3rem;">
+            <div class="section-header">
+                <h3>Recent Transactions</h3>
+                <a href="#" class="view-all" onclick="showAllTransactions()">View All</a>
+            </div>
+            
+            <div class="transactions-list" id="transactions-list">
+                <!-- Transactions will be loaded here -->
+            </div>
+            
+            <div class="empty-state" id="empty-transactions" style="display: none; padding: 4rem; text-align: center; background: var(--dark-1); border-radius: var(--radius-lg); border: 1px solid var(--border-subtle);">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" style="margin-bottom: 1rem;">
+                    <path d="M12 8V12L15 15" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="12" cy="12" r="9" stroke="var(--text-muted)" stroke-width="2"/>
+                </svg>
+                <h4>No transactions yet</h4>
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.25rem;">Your wallet transactions will appear here.</p>
+            </div>
+        </section>
+    </main>
+    
+    <!-- Add Money Modal -->
+    <div id="add-money-modal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h3>Add Funds</h3>
+                <button type="button" class="close-modal" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="add-money-form">
+                    <div class="form-group">
+                        <label for="add-amount">Amount (₹)</label>
+                        <input type="number" id="add-amount" placeholder="Enter amount" min="100" max="100000" style="background: var(--dark-3); border-color: var(--border-glass);">
+                        <div id="add-amount-error" class="field-error"></div>
+                    </div>
+                
+                    <div class="amount-presets" style="margin-bottom: 1.5rem;">
+                        <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Quick Presets</label>
+                        <div class="preset-grid">
+                            <button type="button" class="preset-amount" data-amount="500">₹500</button>
+                            <button type="button" class="preset-amount" data-amount="1000">₹1₹₹14,00,000</button>
+                            <button type="button" class="preset-amount" data-amount="2000">₹2₹₹14,00,000</button>
+                            <button type="button" class="preset-amount" data-amount="5000">₹5₹₹14,00,000</button>
+                            <button type="button" class="preset-amount" data-amount="10000">₹10₹₹14,00,000</button>
+                            <button type="button" class="preset-amount" data-amount="25000">₹25₹₹14,00,000</button>
+                        </div>
+                    </div>
+                
+                    <div class="payment-methods" style="margin-bottom: 2rem;">
+                        <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 0.5rem;">Payment Method</label>
+                        <div class="method-options">
+                            <label class="method-option">
+                                <input type="radio" name="payment-method" value="upi" checked>
+                                <div class="method-card">
+                                    <div class="method-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg></div>
+                                    <div>
+                                        <div class="method-title">UPI / Net Banking</div>
+                                        <div class="method-desc">Instant transfer via phone</div>
+                                    </div>
+                                </div>
+                            </label>
+                            <label class="method-option">
+                                <input type="radio" name="payment-method" value="card">
+                                <div class="method-card">
+                                    <div class="method-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg></div>
+                                    <div>
+                                        <div class="method-title">Credit / Debit Card</div>
+                                        <div class="method-desc">Pay via securely saved card</div>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                        <div id="payment-method-error" class="field-error"></div>
+                    </div>
+                
+                    <button id="add-money-btn" type="button" class="btn btn-primary btn-block">
+                        <span>Add Money</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-overlay" class="modal" aria-hidden="true" style="background: rgba(0,0,0,0.5); backdrop-filter: none; z-index: 999; display: none;"></div>
+
+    <!-- Transactions Modal -->
+    <div id="transactions-modal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h3>Transaction History</h3>
+                <button type="button" class="close-modal" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="transactions-list" id="transactions-modal-list" style="max-height: 350px; overflow-y: auto; gap: 0.75rem;"></div>
+            </div>
+            <div style="display: flex; gap: 1rem; padding: 1.5rem; border-top: 1px solid var(--border-subtle);">
+                <button class="btn btn-outline btn-block" onclick="wallet.exportTransactions('json')" style="font-size: 0.8rem; padding: 0.5rem 1rem;">Export JSON</button>
+                <button class="btn btn-outline btn-block" onclick="wallet.exportTransactions('csv')" style="font-size: 0.8rem; padding: 0.5rem 1rem;">Export CSV</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bottom Navigation for Mobile -->
+    <nav class="bottom-nav">
+        <a href="home.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" 
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Home</span>
+        </a>
+        <a href="search.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" 
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span>Auctions</span>
+        </a>
+        <a href="sell.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span>Sell</span>
+        </a>
+        <a href="dashboard.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="3" width="7" height="9" rx="1" stroke="currentColor" stroke-width="2"/>
+                <rect x="14" y="3" width="7" height="5" rx="1" stroke="currentColor" stroke-width="2"/>
+                <rect x="14" y="12" width="7" height="9" rx="1" stroke="currentColor" stroke-width="2"/>
+                <rect x="3" y="16" width="7" height="5" rx="1" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            <span>Dashboard</span>
+        </a>
+        <a href="wallet.html" class="nav-item active">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" 
+                      stroke="currentColor" stroke-width="2"/>
+                <path d="M15 8H9V16H15V8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+            <span>Wallet</span>
+        </a>
+    </nav>
+    
+    <script src="js/notify.js"></script>
+    <script src="js/wallet.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+</html>

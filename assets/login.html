@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <title>FLEXY - Login</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card card">
+            <div class="logo-container">
+                <div class="logo-icon" aria-hidden="true">
+                    <img src="assets/hammer.svg" alt="Hammer logo">
+                </div>
+                <h1 class="logo-text">FLEXY</h1>
+                <p class="logo-subtext">Flexible Marketplace</p>
+            </div>
+            
+            <form id="login-form" class="auth-form">
+                <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <div class="input-with-country">
+                        <span class="country-code">+91</span>
+                        <input type="tel" id="phone" placeholder="98765 43210" maxlength="10" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="name">Display Name</label>
+                    <input type="text" id="name" placeholder="Enter your name" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-block">
+                    <span class="btn-text">Send OTP</span>
+                </button>
+                
+                <p class="terms-text">
+                    By continuing, you agree to our <a href="#">Terms</a> & <a href="#">Privacy Policy</a>
+                </p>
+            </form>
+            
+            <div class="auth-footer">
+                <p>Need help? <a href="#" class="help-link">Contact Support</a></p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- OTP Modal -->
+    <div id="otp-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Verify OTP</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p class="otp-info">Enter the 6-digit OTP sent to your phone</p>
+                <div class="otp-container">
+                    <input type="text" class="otp-input" maxlength="1">
+                    <input type="text" class="otp-input" maxlength="1">
+                    <input type="text" class="otp-input" maxlength="1">
+                    <input type="text" class="otp-input" maxlength="1">
+                    <input type="text" class="otp-input" maxlength="1">
+                    <input type="text" class="otp-input" maxlength="1">
+                </div>
+                <div class="otp-actions">
+                    <button id="verify-otp" class="btn btn-primary btn-block">Verify OTP</button>
+                    <p class="resend-otp">Didn't receive? <a href="#" id="resend-otp">Resend OTP</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="js/notify.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+</html>

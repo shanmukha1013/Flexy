@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explore | FLEXY Collectors</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body class="page-fade-in">
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-container container">
+            <div class="logo-section" onclick="window.location.href='home.html'" style="cursor: pointer;">
+                <div style="display: flex; align-items: center;">
+                    <div class="logo-icon" aria-hidden="true" style="color: var(--primary); width: 32px; height: 32px; margin-right: 0.5rem;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 100%; height: 100%;">
+    <path d="m15 5 4 4" />
+    <path d="m11 9 4 4" />
+    <path d="m13 7-8 8" />
+    <path d="M9 11l-4 4" />
+    <path d="m13 13-7 7" />
+    <path d="M20 20H10" />
+</svg>
+                </div>
+                    <h1 class="app-logo">FLEXY</h1>
+                </div>
+            </div>
+            
+            <div class="header-actions">
+                <button class="header-btn" onclick="window.location.href='home.html'">Home</button>
+                <button class="header-btn active" onclick="window.location.href='explore.html'">Explore</button>
+                <button class="header-btn" onclick="window.location.href='communities.html'">Communities</button>
+                <button class="header-btn" onclick="window.location.href='collections.html'">Collections</button>
+                <button class="header-btn" onclick="window.location.href='auctions.html'">Auctions</button>
+                <button class="header-btn" onclick="window.location.href='messages.html'">Messages</button>
+                <button class="header-btn" onclick="window.location.href='wallet.html'">Wallet</button>
+                <button class="header-btn" onclick="window.location.href='profile.html'">Profile</button>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="main-container container">
+        <section style="margin-top: 3rem; text-align: center;">
+            <h2 class="display-title animate-fade-up stagger-1">Discover the Extraordinary</h2>
+            <p class="animate-fade-up stagger-2" style="color: var(--text-secondary); max-width: 600px; margin: 1rem auto;">Search across collections, communities, groups, auctions, and members.</p>
+            
+            <div class="search-bar glass-card animate-fade-up stagger-3" style="max-width: 700px; margin: 2rem auto; display: flex; align-items: center; padding: 0.5rem 0.5rem 0.5rem 1.5rem; border-radius: var(--radius-full);">
+                <span style="color: var(--text-muted); font-size: 1.25rem;"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></span>
+                <input type="text" id="global-search-input" placeholder="Search communities, collectors, or rare items..." style="flex: 1; border: none; background: transparent; padding: 1rem; color: var(--text-primary); outline: none; font-size: 1.1rem;">
+                <button id="global-search-btn" class="btn btn-primary" style="border-radius: var(--radius-full); padding: 0.8rem 2rem;">Search</button>
+            </div>
+        </section>
+
+        <!-- Discovery Categories -->
+        <section class="animate-fade-up stagger-4" style="margin-top: 2rem; margin-bottom: 2rem;">
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;" id="search-filters">
+                <button class="btn btn-primary" data-filter="all" style="border-radius: var(--radius-full);">All Results</button>
+                <button class="btn btn-outline" data-filter="collections" style="border-radius: var(--radius-full);">Collections</button>
+                <button class="btn btn-outline" data-filter="communities" style="border-radius: var(--radius-full);">Communities</button>
+                <button class="btn btn-outline" data-filter="users" style="border-radius: var(--radius-full);">Collectors</button>
+                <button class="btn btn-outline" data-filter="auctions" style="border-radius: var(--radius-full);">Auctions</button>
+            </div>
+        </section>
+
+        <section id="search-results-container" class="animate-fade-up stagger-4" style="margin-top: 2rem; margin-bottom: 4rem;">
+            <p style="text-align: center; color: var(--text-muted);">Your next discovery is waiting.</p>
+        </section>
+    </main>
+    <script src="js/api.js"></script>
+</body>
+</html>

@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <title>FLEXY - Profile</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-container container">
+            <div class="logo-section">
+                <button class="back-btn" onclick="window.location.href='home.html'">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <div class="logo-icon" aria-hidden="true"><img src="assets/hammer.svg" alt="Hammer logo"></div>
+                <h1 class="app-logo">Profile</h1>
+            </div>
+            
+            <div class="header-actions">
+                <button class="header-btn" onclick="logout()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" 
+                              stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M16 17L21 12L16 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="main-container container">
+        <!-- Profile Info -->
+        <section class="profile-section">
+            <div class="profile-header card card-body">
+                <div class="profile-avatar" id="profile-avatar" role="img" aria-label="Profile picture">
+                    <!-- Initials or image set by JS -->
+                    <button id="change-avatar" class="icon-button" title="Change profile photo" aria-label="Change profile photo">📷</button>
+                    <input type="file" id="avatar-input" accept="image/*" style="display:none" />
+                </div>
+                <div class="profile-info">
+                    <h2 id="profile-name">Loading...</h2>
+                    <p class="profile-email" id="profile-phone">Loading...</p>
+                    <p class="profile-member">Member since <span id="member-since">2024</span></p>
+                </div>
+                <button class="btn btn-outline" onclick="editProfile()">
+                    Edit Profile
+                </button>
+            </div>
+        </section>
+        
+        <!-- Stats -->
+        <section class="stats-section">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="items-listed">0</div>
+                    <div class="stat-label">Items Listed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="items-sold">0</div>
+                    <div class="stat-label">Items Sold</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="total-bids">0</div>
+                    <div class="stat-label">Bids Made</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="rating">0.0</div>
+                    <div class="stat-label">Rating</div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Menu Items -->
+        <section class="menu-section">
+            <div class="menu-grid">
+                <div class="menu-item" onclick="window.location.href='wallet.html'">
+                    <div class="menu-icon">💰</div>
+                    <div class="menu-text">
+                        <h4>Wallet</h4>
+                        <p>View balance & transactions</p>
+                    </div>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 18L15 12L9 6" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                
+                <div class="menu-item" onclick="showMyItems()">
+                    <div class="menu-icon">📦</div>
+                    <div class="menu-text">
+                        <h4>My Items</h4>
+                        <p>View items you're selling</p>
+                    </div>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 18L15 12L9 6" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                
+                <div class="menu-item" onclick="showMyBids()">
+                    <div class="menu-icon">🤝</div>
+                    <div class="menu-text">
+                        <h4>My Bids</h4>
+                        <p>Track your active bids</p>
+                    </div>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 18L15 12L9 6" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+
+                <div class="menu-item" onclick="showNotifications()" aria-label="Notifications">
+                    <div class="menu-icon">🔔</div>
+                    <div class="menu-text">
+                        <h4>Notifications</h4>
+                        <p>Recent activity</p>
+                    </div>
+                    <div id="notif-count" class="menu-badge" style="display:none">0</div>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 18L15 12L9 6" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+
+                <div class="menu-item" onclick="profile.showInbox()" aria-label="Inbox">
+                    <div class="menu-icon">✉️</div>
+                    <div class="menu-text">
+                        <h4>Inbox</h4>
+                        <p>Messages & notifications</p>
+                    </div>
+                    <div id="inbox-count" class="menu-badge" style="display:none">0</div>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 18L15 12L9 6" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+
+                <div class="menu-item" onclick="profile.showDeletedItems()" aria-label="Deleted Items">
+                    <div class="menu-icon">🗑️</div>
+                    <div class="menu-text">
+                        <h4>Deleted Items</h4>
+                        <p>Restore or purge</p>
+                    </div>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 18L15 12L9 6" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                
+                <div class="menu-item" onclick="showSettings()">
+                    <div class="menu-icon">⚙️</div>
+                    <div class="menu-text">
+                        <h4>Settings</h4>
+                        <p>App preferences</p>
+                    </div>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 18L15 12L9 6" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                
+                <div class="menu-item" onclick="showHelp()">
+                    <div class="menu-icon">❓</div>
+                    <div class="menu-text">
+                        <h4>Help & Support</h4>
+                        <p>Get help and FAQs</p>
+                    </div>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 18L15 12L9 6" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+
+
+            </div>
+        </section>
+
+        <!-- Profile Content: Items, Bids, Wins -->
+        <section class="profile-content">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="profile.showTab('items')">Your Items</button>
+                <button class="tab-btn" onclick="profile.showTab('bids')">Your Bids</button>
+                <button class="tab-btn" onclick="profile.showTab('wins')">Your Wins</button>
+            </div>
+
+            <div id="tab-items" class="tab active">
+                <div id="my-items-list" class="items-list"></div>
+            </div>
+
+            <div id="tab-bids" class="tab">
+                <div id="my-bids-list" class="bids-list"></div>
+            </div>
+
+            <div id="tab-wins" class="tab">
+                <div id="my-wins-list" class="wins-list"></div>
+            </div>
+        </section>
+    </main> 
+    
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <a href="home.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" 
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Home</span>
+        </a>
+        <a href="search.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" 
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span>Search</span>
+        </a>
+        <a href="sell.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span>Sell</span>
+        </a>
+        <a href="wallet.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" 
+                      stroke="currentColor" stroke-width="2"/>
+                <path d="M15 8H9V16H15V8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+            <span>Wallet</span>
+        </a>
+        <a href="profile.html" class="nav-item active">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M20 21V19C20 16.7909 18.2091 15 16 15H8C5.79086 15 4 16.7909 4 19V21" 
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            <span>Profile</span>
+        </a>
+    </nav>
+    
+    <!-- Edit Profile Modal (Instagram-like) -->
+    <div id="edit-profile-modal" class="modal-overlay" style="display:none" aria-hidden="true">
+        <div class="modal-card profile-edit-card" role="dialog" aria-modal="true" aria-labelledby="edit-profile-title">
+            <h3 id="edit-profile-title">Edit Profile</h3>
+            <div class="modal-body profile-edit-body">
+                <div class="profile-edit-avatar" id="edit-profile-avatar" role="img" aria-label="Profile photo">
+                    <button id="edit-avatar-btn" class="edit-avatar-btn" title="Change profile photo" aria-label="Change profile photo">📷</button>
+                    <input type="file" id="edit-avatar-input" accept="image/*" style="display:none" />
+                </div>
+
+                <div class="profile-edit-fields">
+                    <label class="modal-label">Full name
+                        <input id="edit-name" type="text" placeholder="Full name">
+                    </label>
+                    <label class="modal-label">Phone
+                        <input id="edit-phone" type="text" placeholder="Phone number">
+                    </label>
+                    <label class="modal-label">Bio
+                        <textarea id="edit-bio" rows="3" placeholder="A short bio"></textarea>
+                    </label>
+                    <label class="modal-label">Location
+                        <input id="edit-location" type="text" placeholder="City, Country">
+                    </label>
+                </div>
+
+                <div class="profile-edit-preview" id="profile-edit-preview">
+                    <div class="preview-card">
+                        <div class="preview-avatar" id="preview-avatar">U</div>
+                        <div class="preview-details">
+                            <div class="preview-name" id="preview-name">Your Name</div>
+                            <div class="preview-bio" id="preview-bio">Short bio appears here</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions profile-edit-actions">
+                <button class="btn btn-outline" id="edit-profile-cancel">Cancel</button>
+                <button class="btn btn-primary" id="edit-profile-save">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inbox Modal -->
+    <div id="inbox-modal" class="modal-overlay" style="display:none" aria-hidden="true">
+        <div class="modal-card inbox-card" role="dialog" aria-modal="true" aria-labelledby="inbox-title">
+            <h3 id="inbox-title">Inbox <small class="muted" id="inbox-count-label"></small></h3>
+            <div class="modal-body inbox-body">
+                <div class="inbox-list" id="inbox-list"></div>
+                <div class="inbox-preview" id="inbox-preview">
+                    <div class="preview-header">
+                        <h4 id="preview-subject">Select a message</h4>
+                        <div class="preview-actions">
+                            <button class="btn btn-outline btn-sm" id="preview-mark-read">Mark read</button>
+                            <button class="btn btn-outline btn-sm" id="preview-delete">Delete</button>
+                        </div>
+                    </div>
+                    <div class="preview-body" id="preview-body">No message selected</div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="profile.exportEmails('json')">Export JSON</button>
+                <button class="btn btn-outline" onclick="profile.exportEmails('csv')">Export CSV</button>
+                <button class="btn btn-primary" onclick="profile.sendNotificationEmails()">Send as Emails</button>                <a class="btn btn-outline btn-sm" href="inbox.html">Open full inbox</a>            </div>
+        </div>
+    </div>
+
+    <!-- Deleted Items Modal -->
+    <div id="deleted-items-modal" class="modal-overlay" style="display:none" aria-hidden="true">
+        <div class="modal-card deleted-card" role="dialog" aria-modal="true" aria-labelledby="deleted-title">
+            <h3 id="deleted-title">Deleted Items</h3>
+            <div class="modal-body deleted-body" id="deleted-items-list">
+                <!-- entries rendered here -->
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="profile.clearDeletedItems()">Clear All</button>
+                <button class="btn btn-primary" onclick="profile.closeDeletedModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cropper Modal -->
+    <div id="cropper-modal" class="modal-overlay" style="display:none" aria-hidden="true">
+        <div class="modal-card cropper-card" role="dialog" aria-modal="true" aria-labelledby="cropper-title">
+            <h3 id="cropper-title">Crop Profile Photo</h3>
+            <div class="modal-body cropper-body">
+                <div class="cropper-canvas-wrap">
+                    <canvas id="cropper-canvas" width="400" height="400"></canvas>
+                </div>
+                <div class="cropper-controls">
+                    <label>Zoom <input id="cropper-zoom" type="range" min="1" max="4" step="0.01" value="1"></label>
+                    <label>Rotate <input id="cropper-rotate" type="range" min="-180" max="180" step="1" value="0"></label>
+                    <div class="cropper-actions">
+                        <button class="btn btn-outline" id="cropper-reset">Reset</button>
+                        <button class="btn btn-outline" id="cropper-cancel">Cancel</button>
+                        <button class="btn btn-primary" id="cropper-save">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+
+
+    <!-- Edit Item Modal (inline editor) -->
+    <div id="edit-item-modal" class="modal-overlay" style="display:none" aria-hidden="true">
+        <div class="modal-card">
+            <h3>Edit Item</h3>
+            <div class="modal-body">
+                <label class="modal-label">Title
+                    <input id="edit-item-title" type="text" placeholder="Item title">
+                </label>
+                <label class="modal-label">Price
+                    <input id="edit-item-price" type="number" placeholder="Price">
+                </label>
+                <label class="modal-label">Location
+                    <input id="edit-item-location" type="text" placeholder="Location">
+                </label>
+                <label class="modal-label">Description
+                    <textarea id="edit-item-desc" rows="4" placeholder="Description"></textarea>
+                </label>
+                <label class="modal-label">Images
+                    <input id="edit-item-images" type="file" accept="image/*" multiple>
+                </label>
+                <div id="edit-item-image-preview" class="image-preview"></div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-outline" id="edit-item-cancel">Cancel</button>
+                <button class="btn btn-primary" id="edit-item-save">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/notify.js"></script>
+    <script src="js/profile.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+</html>

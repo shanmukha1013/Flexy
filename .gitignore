@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Environment Variables - NEVER COMMIT
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build output
+dist/
+build/
+
+# Vercel
+.vercel/
+
+# Archives & Temp Files
+*.zip
+*.rar
+*.tar.gz
+temp/
+tmp/

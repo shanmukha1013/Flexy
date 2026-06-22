@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <title>FLEXY - Item</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-container container">
+            <div class="logo-section">
+                <button class="back-btn" onclick="window.history.back()">Back</button>
+                <div class="logo-icon" aria-hidden="true"><img src="assets/hammer.svg" alt="Hammer logo"></div>
+                <h1 class="app-logo">Item</h1>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-container item-detail container">
+        <div class="item-detail-card card">
+            <div class="item-detail-media">
+                <img id="item-image" src="assets/placeholder.svg" alt="Item">
+                <div class="media-overlay">
+                    <div class="seller-info">
+                        <div id="seller-avatar" class="avatar"></div>
+                        <div class="seller-meta">
+                            <div id="seller-name">Seller</div>
+                            <div id="seller-rating" class="kicker muted">★★★★★</div>
+                        </div>
+                    </div>
+                    <div class="auction-badges">
+                        <div id="highest-bid-badge" class="badge">₹0</div>
+                        <div id="countdown" class="kicker">00:00:00</div>
+                    </div>
+                </div>
+            </div>
+            <div class="item-detail-info card-body">
+                <div class="title-row">
+                    <h2 id="item-title">Item Title</h2>
+                    <div class="watch-btn">
+                        <button id="watch-toggle" class="btn btn-ghost btn-icon-small" aria-pressed="false" title="Watch item">♡</button>
+                    </div>
+                </div>
+                <p id="item-description">Item description goes here.</p>
+
+                <div class="bid-hero">
+                    <div class="current-price">
+                        <div class="label kicker">Current Bid</div>
+                        <div id="item-price" class="price big">₹0</div>
+                        <div class="min-increment muted kicker">Min increment: ₹<span id="min-increment">100</span></div>
+                    </div>
+
+                    <div class="place-bid-panel">
+                        <div class="quick-bids">
+                            <button class="btn btn-outline quick-bid" data-add="100">+₹100</button>
+                            <button class="btn btn-outline quick-bid" data-percent="5">+5%</button>
+                            <button class="btn btn-outline quick-bid" data-percent="10">+10%</button>
+                            <button class="btn btn-outline quick-bid" data-add="500">+₹500</button>
+                        </div>
+
+                        <div class="bid-controls">
+                            <input type="number" id="bid-amount" class="input" min="1" placeholder="Enter your bid">
+                            <button id="place-bid" class="btn btn-primary btn-lg">Place Bid</button>
+                        </div>
+
+                        <div class="bid-hint muted">Tip: Use quick bids to raise more likely to win ✨</div>
+                    </div>
+                </div>
+
+                <div class="bids-section mt-3">
+                    <div class="section-header">
+                        <h3>Bid History</h3>
+                        <div class="kicker muted" id="bids-count">0 bids</div>
+                    </div>
+                    <div id="bids-list" class="bids-list">
+                        <!-- Bid items -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/notify.js"></script>
+    <script src="js/item.js"></script>
+</body>
+</html>

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FLEXY - Authentication</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/loader.js"></script>
+    <style>
+        .auth-tab-group {
+            display: flex;
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: 2rem;
+        }
+        .auth-tab {
+            flex: 1;
+            text-align: center;
+            padding: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all var(--transition-fast);
+        }
+        .auth-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        .form-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            margin-bottom: 1.5rem;
+        }
+        .remember-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+        .forgot-link {
+            color: var(--primary);
+            text-decoration: none;
+            transition: color var(--transition-fast);
+        }
+        .forgot-link:hover {
+            color: var(--primary-hover);
+        }
+        .oauth-divider {
+            display: flex;
+            align-items: center;
+            margin: 2rem 0;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .oauth-divider::before, .oauth-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-subtle);
+        }
+        .oauth-divider::before { margin-right: 1rem; }
+        .oauth-divider::after { margin-left: 1rem; }
+        
+        .btn-google {
+            background: #FFFFFF;
+            color: #000000;
+            border: 1px solid #E5E7EB;
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.05);
+        }
+        .btn-google:hover {
+            background: #F3F4F6;
+            transform: translateY(-2px);
+        }
+        
+        /* Slide Animations */
+        .auth-card {
+            animation: card-reveal 0.5s var(--ease-spring);
+        }
+        @keyframes card-reveal {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes shake {
+            0%,100% { transform: translateX(0); }
+            20% { transform: translateX(-8px); }
+            40% { transform: translateX(8px); }
+            60% { transform: translateX(-6px); }
+            80% { transform: translateX(6px); }
+        }
+        .otp-status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(249,115,22,0.1);
+            border: 1px solid rgba(249,115,22,0.3);
+            border-radius: 20px;
+            padding: 0.4rem 1rem;
+            font-size: 0.8rem;
+            color: var(--primary);
+            font-weight: 600;
+            margin-bottom: 1.25rem;
+        }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card card glass-card">
+            <div class="logo-container" onclick="window.location.href='home.html'" style="cursor: pointer;">
+                <div class="logo-icon" aria-hidden="true" style="color: var(--primary); margin: 0 auto 0.75rem;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 100%; height: 100%;">
+    <path d="m15 5 4 4" />
+    <path d="m11 9 4 4" />
+    <path d="m13 7-8 8" />
+    <path d="M9 11l-4 4" />
+    <path d="m13 13-7 7" />
+    <path d="M20 20H10" />
+</svg>
+                </div>
+                <h1 class="logo-text">FLEXY</h1>
+                <p class="logo-subtext">Every Item Finds Its Value</p>
+            </div>
+            
+            <form id="login-form" class="auth-form" style="margin-top: 1.5rem;">
+                <div class="form-group">
+                    <label for="email" style="color: var(--text-secondary); font-weight: 500; margin-bottom: 0.5rem; display: block;">Email Address</label>
+                    <input type="email" id="email" placeholder="you@example.com" required style="width: 100%; background: var(--dark-3); border: 1px solid var(--border-glass); padding: 0.75rem 1rem; border-radius: var(--radius-md); color: var(--text-primary); font-size: 1rem; outline: none; transition: border-color var(--transition-fast);" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border-glass)'">
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-block" style="margin-top: 1.5rem; font-weight: 600;">
+                    <span class="btn-text" id="submit-btn-text">Continue</span>
+                </button>
+            </form>
+            
+            <div class="auth-footer" style="text-align: center; margin-top: 2rem;">
+                <p style="color: var(--text-secondary); font-size: 0.85rem;">Need help? <a href="#" class="forgot-link">Contact Support</a></p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- OTP Verification Modal -->
+    <div id="otp-modal" class="modal">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h3>Verify Security Code</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <div class="otp-status-badge">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                    Verification code sent
+                </div>
+                <p id="otp-message" style="color: var(--text-secondary); font-size: 0.92rem; margin-bottom: 1.5rem; line-height: 1.6;">Enter the 6-digit OTP code sent to your email.</p>
+                <div class="otp-container">
+                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" autocomplete="one-time-code">
+                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric">
+                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric">
+                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric">
+                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric">
+                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric">
+                </div>
+                <div class="otp-actions" style="margin-top: 2rem;">
+                    <button id="verify-otp" class="btn btn-primary btn-block" style="font-weight: 600;">Verify &amp; Continue</button>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 1rem;">
+                        Didn't receive code? <a href="#" id="resend-otp" class="forgot-link">Resend OTP<span id="otp-countdown" style="color: var(--text-muted);"></span></a>
+                    </p>
+                    <p style="color: var(--text-muted); font-size: 0.78rem; margin-top: 0.5rem;">Code expires in 5 minutes</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="js/notify.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+</html>

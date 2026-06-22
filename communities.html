@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Communities | FLEXY Collectors</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body class="page-fade-in">
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-container container">
+            <div class="logo-section" onclick="window.location.href='home.html'" style="cursor: pointer;">
+                <div style="display: flex; align-items: center;">
+                    <div class="logo-icon" aria-hidden="true" style="color: var(--primary); width: 32px; height: 32px; margin-right: 0.5rem;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 100%; height: 100%;">
+    <path d="m15 5 4 4" />
+    <path d="m11 9 4 4" />
+    <path d="m13 7-8 8" />
+    <path d="M9 11l-4 4" />
+    <path d="m13 13-7 7" />
+    <path d="M20 20H10" />
+</svg>
+                </div>
+                    <h1 class="app-logo">FLEXY</h1>
+                </div>
+            </div>
+            
+            <div class="header-actions">
+                <button class="header-btn" onclick="window.location.href='home.html'">Home</button>
+                <button class="header-btn" onclick="window.location.href='explore.html'">Explore</button>
+                <button class="header-btn active" onclick="window.location.href='communities.html'">Communities</button>
+                <button class="header-btn" onclick="window.location.href='collections.html'">Collections</button>
+                <button class="header-btn" onclick="window.location.href='auctions.html'">Auctions</button>
+                <button class="header-btn" onclick="window.location.href='messages.html'">Messages</button>
+                <button class="header-btn" onclick="window.location.href='wallet.html'">Wallet</button>
+                <button class="header-btn" onclick="window.location.href='profile.html'">Profile</button>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="main-container container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; margin-bottom: 2rem;">
+            <h2 class="display-title">Collector Communities</h2>
+            <button class="btn btn-primary" onclick="window.createCommunity()" style="border-radius: var(--radius-full); padding: 0.8rem 2rem;">+ Create Community</button>
+        </div>
+        <div id="communities-feed-container"></div>
+    </main>
+    <script src="js/api.js"></script>
+</body>
+</html>

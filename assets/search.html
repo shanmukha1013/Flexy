@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <title>FLEXY - Search</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-container container">
+            <div class="logo-section">
+                <button class="back-btn" onclick="window.location.href='home.html'">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <div class="logo-icon" aria-hidden="true"><img src="assets/hammer.svg" alt="Hammer logo"></div>
+                <div class="search-header">
+                    <div class="search-input-container">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="search-icon">
+                            <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" 
+                                  stroke="#6B7280" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        <input type="text" 
+                               id="search-input" 
+                               placeholder="Search for items, categories..." 
+                               class="search-input-large"
+                               autofocus>
+                        <button id="clear-search" class="clear-search-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                <path d="M18 6L6 18M6 6L18 18" stroke="#6B7280" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="header-actions">
+                <button class="header-btn" onclick="toggleFilters()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M22 3H2L10 12.46V19L14 21V12.46L22 3Z" 
+                              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Filter</span>
+                </button>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="main-container container">
+        <!-- Filters Panel -->
+        <div class="filters-panel" id="filters-panel">
+            <div class="filters-header">
+                <h3>Filters</h3>
+                <button class="close-filters" onclick="toggleFilters()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="filter-section">
+                <h4>Price Range</h4>
+                <div class="price-range">
+                    <div class="range-inputs">
+                        <input type="number" id="min-price" placeholder="Min" class="range-input">
+                        <span>to</span>
+                        <input type="number" id="max-price" placeholder="Max" class="range-input">
+                    </div>
+                    <input type="range" id="price-slider" min="0" max="100000" value="50000" class="range-slider">
+                </div>
+            </div>
+            
+            <div class="filter-section">
+                <h4>Category</h4>
+                <div class="category-filters">
+                    <label class="filter-checkbox">
+                        <input type="checkbox" value="electronics" checked>
+                        <span>Electronics</span>
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" value="fashion">
+                        <span>Fashion</span>
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" value="home">
+                        <span>Home & Garden</span>
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" value="sports">
+                        <span>Sports</span>
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" value="books">
+                        <span>Books</span>
+                    </label>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" value="vehicles">
+                        <span>Vehicles</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="filter-section">
+                <h4>Condition</h4>
+                <div class="condition-filters">
+                    <label class="filter-radio">
+                        <input type="radio" name="condition" value="all" checked>
+                        <span>All</span>
+                    </label>
+                    <label class="filter-radio">
+                        <input type="radio" name="condition" value="new">
+                        <span>New</span>
+                    </label>
+                    <label class="filter-radio">
+                        <input type="radio" name="condition" value="used">
+                        <span>Used</span>
+                    </label>
+                    <label class="filter-radio">
+                        <input type="radio" name="condition" value="refurbished">
+                        <span>Refurbished</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="filter-actions">
+                <button class="btn btn-outline" onclick="clearFilters()">Clear All</button>
+                <button class="btn btn-primary" onclick="applyFilters()">Apply Filters</button>
+            </div>
+        </div>
+        
+        <!-- Search Results -->
+        <section class="search-results">
+            <div class="results-header">
+                <h3 id="results-count">Search Results</h3>
+                <select id="sort-by" class="sort-select" onchange="sortResults()">
+                    <option value="relevance">Relevance</option>
+                    <option value="price-low">Price: Low to High</option>
+                    <option value="price-high">Price: High to Low</option>
+                    <option value="newest">Newest First</option>
+                    <option value="ending">Ending Soon</option>
+                </select>
+            </div>
+            
+            <div class="items-grid" id="search-results">
+                <!-- Results loaded by JavaScript -->
+            </div>
+            
+            <div class="no-results" id="no-results" style="display: none;">
+                <div class="empty-state">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
+                        <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" 
+                              stroke="#D1D5DB" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <h4>No items found</h4>
+                    <p>Try different keywords or filters</p>
+                    <button class="btn btn-outline" onclick="clearFilters()">Clear Filters</button>
+                </div>
+            </div>
+            
+            <div class="loading" id="search-loading" style="display: none;">
+                <div class="loading-spinner"></div>
+                <p>Searching items...</p>
+            </div>
+        </section>
+    </main>
+    
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <a href="home.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" 
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Home</span>
+        </a>
+        <a href="search.html" class="nav-item active">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" 
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span>Search</span>
+        </a>
+        <a href="sell.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span>Sell</span>
+        </a>
+        <a href="wallet.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" 
+                      stroke="currentColor" stroke-width="2"/>
+                <path d="M15 8H9V16H15V8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+            <span>Wallet</span>
+        </a>
+        <a href="profile.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M20 21V19C20 16.7909 18.2091 15 16 15H8C5.79086 15 4 16.7909 4 19V21" 
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            <span>Profile</span>
+        </a>
+    </nav>
+    
+    <script src="js/notify.js"></script>
+    <script src="js/search.js"></script>
+</body>
+</html>

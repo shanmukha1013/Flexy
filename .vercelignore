@@ -1,0 +1,11 @@
+# Ignore database models, API routes, and backend server files on Vercel
+models/
+routes/
+middleware/
+server.js
+seed.js
+.env
+package.json
+package-lock.json
+*.js
+!js/

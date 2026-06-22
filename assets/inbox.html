@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>FLEXY - Inbox</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-container container">
+            <div class="logo-section">
+                <button class="back-btn" onclick="window.location.href='profile.html'">←</button>
+                <div class="logo-icon" aria-hidden="true"><img src="assets/hammer.svg" alt="Hammer logo"></div>
+                <h1 class="app-logo">Inbox</h1>
+            </div>
+            <div class="header-actions">
+                <button class="header-btn" onclick="inbox.markAllRead()">Mark All Read</button>
+                <button class="header-btn" onclick="inbox.exportEmails('json')">Export JSON</button>
+                <button class="header-btn" onclick="inbox.exportEmails('csv')">Export CSV</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-container container">
+        <section class="inbox-section">
+            <div class="inbox-controls">
+                <button class="btn btn-outline" onclick="inbox.setFilter('all')">All</button>
+                <button class="btn btn-outline" onclick="inbox.setFilter('unread')">Unread</button>
+            </div>
+            <div class="inbox-layout">
+                <div class="inbox-list" id="inbox-list"></div>
+                <div class="inbox-preview" id="inbox-preview">
+                    <div class="preview-header">
+                        <h4 id="preview-subject">Select a message</h4>
+                        <div class="preview-actions">
+                            <button class="btn btn-outline" id="preview-mark-read">Mark read</button>
+                            <button class="btn btn-danger" id="preview-delete">Delete</button>
+                        </div>
+                    </div>
+                    <div class="preview-body" id="preview-body">No message selected</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/notify.js"></script>
+    <script src="js/inbox.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+</html>

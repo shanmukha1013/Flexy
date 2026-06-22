@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <title>FLEXY - Sell Item</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-container container">
+            <div class="logo-section">
+                <button class="back-btn" onclick="window.location.href='home.html'">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <div class="logo-icon" aria-hidden="true"><img src="assets/hammer.svg" alt="Hammer logo"></div>
+                <h1 class="app-logo">Sell Item</h1>
+            </div>
+            
+            <div class="header-actions">
+                <button class="header-btn" onclick="saveDraft()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H16L21 8V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21Z" 
+                              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M17 21V13H7V21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M7 3V8H15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Save Draft</span>
+                </button>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="main-container container">
+        <form id="sell-form" class="sell-form card">
+            <!-- Step Indicator -->
+            <div class="step-indicator">
+                <div class="step active" data-step="1">
+                    <div class="step-number">1</div>
+                    <div class="step-label">Details</div>
+                </div>
+                <div class="step" data-step="2">
+                    <div class="step-number">2</div>
+                    <div class="step-label">Photos</div>
+                </div>
+                <div class="step" data-step="3">
+                    <div class="step-number">3</div>
+                    <div class="step-label">Pricing</div>
+                </div>
+                <div class="step" data-step="4">
+                    <div class="step-number">4</div>
+                    <div class="step-label">Review</div>
+                </div>
+            </div>
+            
+            <!-- Step 1: Basic Details -->
+            <div class="form-step active" id="step-1">
+                <div class="form-section">
+                    <h3>What are you selling?</h3>
+                    
+                    <div class="form-group">
+                        <label for="item-title">Item Title *</label>
+                        <input type="text" 
+                               id="item-title" 
+                               placeholder="e.g., iPhone 14 Pro Max 256GB" 
+                               maxlength="100"
+                               required>
+                        <div class="input-hint">Be specific and descriptive</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="item-category">Category *</label>
+                        <select id="item-category" required>
+                            <option value="">Select a category</option>
+                            <option value="electronics">Electronics</option>
+                            <option value="fashion">Fashion</option>
+                            <option value="home">Home & Garden</option>
+                            <option value="sports">Sports & Outdoors</option>
+                            <option value="vehicles">Vehicles</option>
+                            <option value="books">Books & Media</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="item-condition">Condition *</label>
+                        <div class="condition-options">
+                            <label class="condition-option">
+                                <input type="radio" name="condition" value="new" required>
+                                <div class="condition-card">
+                                    <div class="condition-icon">🆕</div>
+                                    <div>
+                                        <div class="condition-title">New</div>
+                                        <div class="condition-desc">Never used, with tags</div>
+                                    </div>
+                                </div>
+                            </label>
+                            <label class="condition-option">
+                                <input type="radio" name="condition" value="like-new">
+                                <div class="condition-card">
+                                    <div class="condition-icon">✨</div>
+                                    <div>
+                                        <div class="condition-title">Like New</div>
+                                        <div class="condition-desc">Used once or twice</div>
+                                    </div>
+                                </div>
+                            </label>
+                            <label class="condition-option">
+                                <input type="radio" name="condition" value="good">
+                                <div class="condition-card">
+                                    <div class="condition-icon">👍</div>
+                                    <div>
+                                        <div class="condition-title">Good</div>
+                                        <div class="condition-desc">Used, in good condition</div>
+                                    </div>
+                                </div>
+                            </label>
+                            <label class="condition-option">
+                                <input type="radio" name="condition" value="fair">
+                                <div class="condition-card">
+                                    <div class="condition-icon">🆗</div>
+                                    <div>
+                                        <div class="condition-title">Fair</div>
+                                        <div class="condition-desc">Shows signs of use</div>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="item-description">Description *</label>
+                        <textarea id="item-description" 
+                                  placeholder="Describe your item in detail..." 
+                                  rows="5"
+                                  maxlength="1000"
+                                  required></textarea>
+                        <div class="input-hint">Include key features, specifications, and any defects</div>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="nextStep(2)">
+                        Next: Photos
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Step 2: Photos -->
+            <div class="form-step" id="step-2">
+                <div class="form-section">
+                    <h3>Add Photos</h3>
+                    <p class="section-subtitle">Add clear photos from different angles</p>
+                    
+                    <div class="photo-upload-area" id="photo-dropzone">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
+                            <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" 
+                                  stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M17 8L12 3L7 8" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M12 3V15" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <p>Drag & drop photos here</p>
+                        <p class="upload-hint">or click to browse</p>
+                        <input type="file" 
+                               id="photo-upload" 
+                               accept="image/*" 
+                               multiple 
+                               style="display: none;">
+                    </div>
+                    
+                    <div class="photo-preview" id="photo-preview">
+                        <!-- Photos will be previewed here -->
+                    </div>
+                    
+                    <div class="photo-tips">
+                        <h4>📸 Photo Tips:</h4>
+                        <ul>
+                            <li>Use natural lighting</li>
+                            <li>Show all angles of the item</li>
+                            <li>Include close-ups of important details</li>
+                            <li>Maximum 10 photos, 5MB each</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="prevStep(1)">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Back
+                    </button>
+                    <button type="button" class="btn btn-outline" onclick="nextStep(3)">
+                        Next: Pricing
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Step 3: Pricing -->
+            <div class="form-step" id="step-3">
+                <div class="form-section">
+                    <h3>Set Your Price</h3>
+                    
+                    <div class="form-group">
+                        <label for="item-price">Price (₹) *</label>
+                        <div class="price-input-container">
+                            <span class="price-prefix">₹</span>
+                            <input type="number" 
+                                   id="item-price" 
+                                   placeholder="0" 
+                                   min="1"
+                                   step="1"
+                                   required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="price-type">Price Type</label>
+                        <div class="price-type-options">
+                            <label class="price-type-option">
+                                <input type="radio" name="price-type" value="fixed" checked>
+                                <div class="price-type-card">
+                                    <div class="price-type-icon">💰</div>
+                                    <div>
+                                        <div class="price-type-title">Fixed Price</div>
+                                        <div class="price-type-desc">Sell at this exact price</div>
+                                    </div>
+                                </div>
+                            </label>
+                            <label class="price-type-option">
+                                <input type="radio" name="price-type" value="negotiable">
+                                <div class="price-type-card">
+                                    <div class="price-type-icon">🤝</div>
+                                    <div>
+                                        <div class="price-type-title">Negotiable</div>
+                                        <div class="price-type-desc">Open to offers</div>
+                                    </div>
+                                </div>
+                            </label>
+                            <label class="price-type-option">
+                                <input type="radio" name="price-type" value="auction">
+                                <div class="price-type-card">
+                                    <div class="price-type-icon">🔨</div>
+                                    <div>
+                                        <div class="price-type-title">Auction</div>
+                                        <div class="price-type-desc">Let buyers bid</div>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Auction Settings (hidden by default) -->
+                    <div class="auction-settings" id="auction-settings" style="display: none;">
+                        <div class="form-group">
+                            <label for="starting-bid">Starting Bid (₹)</label>
+                            <input type="number" id="starting-bid" placeholder="100" min="1">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="bid-increment">Bid Increment (₹)</label>
+                            <select id="bid-increment">
+                                <option value="10">₹10</option>
+                                <option value="50" selected>₹50</option>
+                                <option value="100">₹100</option>
+                                <option value="500">₹500</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="auction-duration">Auction Duration</label>
+                            <select id="auction-duration">
+                                <option value="1">1 day</option>
+                                <option value="3" selected>3 days</option>
+                                <option value="7">7 days</option>
+                                <option value="14">14 days</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="item-location">Location *</label>
+                        <input type="text" 
+                               id="item-location" 
+                               placeholder="Enter city or pin code"
+                               required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Shipping Options</label>
+                        <div class="shipping-options">
+                            <label class="shipping-option">
+                                <input type="checkbox" id="shipping-pickup">
+                                <span>Pickup Only</span>
+                            </label>
+                            <label class="shipping-option">
+                                <input type="checkbox" id="shipping-delivery">
+                                <span>I can deliver</span>
+                            </label>
+                            <label class="shipping-option">
+                                <input type="checkbox" id="shipping-shippable">
+                                <span>I can ship</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="prevStep(2)">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Back
+                    </button>
+                    <button type="button" class="btn btn-outline" onclick="nextStep(4)">
+                        Next: Review
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Step 4: Review -->
+            <div class="form-step" id="step-4">
+                <div class="form-section">
+                    <h3>Review & Publish</h3>
+                    
+                    <div class="review-summary">
+                        <div class="review-item">
+                            <div class="review-label">Title</div>
+                            <div class="review-value" id="review-title">-</div>
+                        </div>
+                        <div class="review-item">
+                            <div class="review-label">Category</div>
+                            <div class="review-value" id="review-category">-</div>
+                        </div>
+                        <div class="review-item">
+                            <div class="review-label">Condition</div>
+                            <div class="review-value" id="review-condition">-</div>
+                        </div>
+                        <div class="review-item">
+                            <div class="review-label">Price</div>
+                            <div class="review-value" id="review-price">-</div>
+                        </div>
+                        <div class="review-item">
+                            <div class="review-label">Location</div>
+                            <div class="review-value" id="review-location">-</div>
+                        </div>
+                        <div class="review-item">
+                            <div class="review-label">Description</div>
+                            <div class="review-value" id="review-description">-</div>
+                        </div>
+                    </div>
+                    
+                    <div class="terms-agreement">
+                        <label class="terms-checkbox">
+                            <input type="checkbox" id="agree-terms" required>
+                            <span>I agree to the <a href="#">Terms of Service</a> and confirm this item is legal to sell</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="prevStep(3)">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Back
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <span id="publish-text">Publish Item</span>
+                        <div class="loading-spinner" id="publish-loading" style="display: none;"></div>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </main>
+    
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <a href="home.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" 
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Home</span>
+        </a>
+        <a href="search.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" 
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span>Search</span>
+        </a>
+        <a href="sell.html" class="nav-item active">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span>Sell</span>
+        </a>
+        <a href="wallet.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" 
+                      stroke="currentColor" stroke-width="2"/>
+                <path d="M15 8H9V16H15V8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+            <span>Wallet</span>
+        </a>
+        <a href="profile.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M20 21V19C20 16.7909 18.2091 15 16 15H8C5.79086 15 4 16.7909 4 19V21" 
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            <span>Profile</span>
+        </a>
+    </nav>
+    
+    <script src="js/notify.js"></script>
+    <script src="js/sell.js"></script>
+</body>
+</html>

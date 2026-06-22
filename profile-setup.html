@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Your Showroom | FLEXY</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/loader.js"></script>
+    <style>
+        body {
+            background-color: var(--dark-1);
+            color: var(--text-primary);
+            font-family: var(--font-app);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+        .setup-container {
+            max-width: 580px;
+            width: 100%;
+        }
+        .setup-card {
+            padding: 2.5rem;
+            animation: card-reveal 0.5s var(--ease-spring);
+        }
+        @keyframes card-reveal {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .avatar-upload-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+        .avatar-preview {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            background: var(--dark-3);
+            border: 2px dashed var(--border-glass);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            background-size: cover;
+            background-position: center;
+            transition: all var(--transition-fast);
+        }
+        .avatar-preview:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
+        }
+        .avatar-preview svg {
+            width: 32px;
+            height: 32px;
+            color: var(--text-muted);
+            transition: color var(--transition-fast);
+        }
+        .avatar-preview:hover svg {
+            color: var(--primary);
+        }
+        .avatar-upload-label {
+            margin-top: 0.75rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-weight: 500;
+            transition: color var(--transition-fast);
+        }
+        .avatar-upload-label:hover {
+            color: var(--primary);
+        }
+        .interests-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            margin-top: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .interest-chip {
+            background: var(--dark-2);
+            border: 1px solid var(--border-glass);
+            color: var(--text-secondary);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            user-select: none;
+        }
+        .interest-chip:hover {
+            border-color: var(--text-muted);
+            color: var(--text-primary);
+        }
+        .interest-chip.active {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: var(--primary);
+            color: var(--primary);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.1);
+        }
+        .username-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .username-prefix {
+            position: absolute;
+            left: 1rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            pointer-events: none;
+        }
+        .username-input-wrapper input {
+            padding-left: 2rem !important;
+        }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body>
+    <div class="setup-container">
+        <div class="setup-card card glass-card">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h1 style="font-family: var(--font-brand); font-weight: 500; font-size: 1.8rem; letter-spacing: 0.5px; margin-bottom: 0.5rem;">Complete Your Profile</h1>
+                <p style="color: var(--text-muted); font-size: 0.95rem;">Set up your collector showroom credentials to start bidding and flexing.</p>
+            </div>
+
+            <form id="setup-form">
+                <!-- Avatar Upload -->
+                <div class="avatar-upload-container">
+                    <input type="file" id="avatar-input" accept="image/*" style="display: none;">
+                    <div class="avatar-preview" id="avatar-preview-div" onclick="document.getElementById('avatar-input').click()">
+                        <svg id="upload-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                            <circle cx="12" cy="13" r="4"></circle>
+                        </svg>
+                    </div>
+                    <span class="avatar-upload-label" onclick="document.getElementById('avatar-input').click()">Upload Profile Picture</span>
+                </div>
+
+                <!-- Display Name -->
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label for="displayName" style="color: var(--text-secondary); font-weight: 500; margin-bottom: 0.4rem; display: block;">Full Name / Display Name</label>
+                    <input type="text" id="displayName" placeholder="e.g. John Doe" required style="width: 100%; background: var(--dark-3); border: 1px solid var(--border-glass); padding: 0.75rem 1rem; border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.95rem; outline: none; transition: border-color var(--transition-fast);">
+                </div>
+
+                <!-- Username -->
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label for="username" style="color: var(--text-secondary); font-weight: 500; margin-bottom: 0.4rem; display: block;">Choose Username</label>
+                    <div class="username-input-wrapper">
+                        <span class="username-prefix">@</span>
+                        <input type="text" id="username" placeholder="username" required style="width: 100%; background: var(--dark-3); border: 1px solid var(--border-glass); padding: 0.75rem 1rem; border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.95rem; outline: none; transition: border-color var(--transition-fast);">
+                    </div>
+                </div>
+
+                <!-- Bio -->
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="bio" style="color: var(--text-secondary); font-weight: 500; margin-bottom: 0.4rem; display: block;">Short Collector Bio</label>
+                    <textarea id="bio" placeholder="Tell other collectors what you hunt for..." maxlength="150" style="width: 100%; background: var(--dark-3); border: 1px solid var(--border-glass); padding: 0.75rem 1rem; border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.95rem; outline: none; height: 80px; resize: none; transition: border-color var(--transition-fast);"></textarea>
+                </div>
+
+                <!-- Interests Selection -->
+                <div class="form-group">
+                    <label style="color: var(--text-secondary); font-weight: 500; display: block; margin-bottom: 0.5rem;">Your Collector Interests</label>
+                    <div class="interests-grid" id="interests-container">
+                        <!-- Chips inserted dynamically -->
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block" style="font-weight: 600; padding: 0.85rem;">
+                    Complete Showroom Setup
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/notify.js"></script>
+    <script>
+        const API_BASE = 'http://localhost:3001/api';
+        let selectedInterests = [];
+        let profilePhotoBase64 = '';
+
+        const popularInterests = [
+            'Art', 'Watches', 'Coins', 'Sneakers', 'Trading Cards',
+            'Comic Books', 'Stamps', 'Records', 'Action Figures', 'Vintage Cameras'
+        ];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Check authentication
+            const token = localStorage.getItem('flexy_token');
+            const userStr = localStorage.getItem('flexy_user');
+            if (!token || !userStr) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const currentUser = JSON.parse(userStr);
+            
+            // Pre-fill Name if split from email
+            document.getElementById('displayName').value = currentUser.displayName || '';
+            
+            // Auto generate username if it starts with "user_"
+            if (currentUser.username && !currentUser.username.startsWith('user_')) {
+                document.getElementById('username').value = currentUser.username;
+            } else {
+                document.getElementById('username').value = (currentUser.displayName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            }
+
+            // Render interest chips
+            const interestsGrid = document.getElementById('interests-container');
+            popularInterests.forEach(interest => {
+                const chip = document.createElement('div');
+                chip.className = 'interest-chip';
+                chip.textContent = interest;
+                chip.addEventListener('click', () => {
+                    chip.classList.toggle('active');
+                    if (chip.classList.contains('active')) {
+                        selectedInterests.push(interest);
+                    } else {
+                        selectedInterests = selectedInterests.filter(i => i !== interest);
+                    }
+                });
+                interestsGrid.appendChild(chip);
+            });
+
+            // Handle Photo uploader
+            const avatarInput = document.getElementById('avatar-input');
+            const previewDiv = document.getElementById('avatar-preview-div');
+            const uploadSvg = document.getElementById('upload-svg');
+
+            avatarInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    if (file.size > 2 * 1024 * 1024) {
+                        notify('Please upload an image smaller than 2MB', 'error');
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        profilePhotoBase64 = event.target.result;
+                        previewDiv.style.backgroundImage = `url('${profilePhotoBase64}')`;
+                        uploadSvg.style.display = 'none';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            // Focus and border highlights
+            const inputs = document.querySelectorAll('input, textarea');
+            inputs.forEach(input => {
+                input.addEventListener('focus', () => input.style.borderColor = 'var(--primary)');
+                input.addEventListener('blur', () => input.style.borderColor = 'var(--border-glass)');
+            });
+
+            // Submit setup form
+            document.getElementById('setup-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const displayName = document.getElementById('displayName').value.trim();
+                let username = document.getElementById('username').value.trim();
+                if (username.startsWith('@')) username = username.substring(1);
+                const bio = document.getElementById('bio').value.trim();
+
+                if (!displayName || !username) {
+                    notify('Display Name and Username are required', 'error');
+                    return;
+                }
+
+                if (username.length < 3 || !/^[a-zA-Z0-9_]+$/.test(username)) {
+                    notify('Username must be at least 3 alphanumeric characters or underscores', 'error');
+                    return;
+                }
+
+                if (selectedInterests.length === 0) {
+                    notify('Please select at least one interest to customize your feed', 'warning');
+                    return;
+                }
+
+                const submitBtn = e.target.querySelector('button[type="submit"]');
+                const originalText = submitBtn.textContent;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<div class="loading-spinner"></div> Finishing...';
+
+                try {
+                    const response = await fetch(`${API_BASE}/users/${currentUser._id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            displayName,
+                            username,
+                            bio,
+                            interests: selectedInterests,
+                            avatarUrl: profilePhotoBase64 || currentUser.avatarUrl
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Failed to complete profile');
+                    }
+
+                    // Success! Update local storage
+                    localStorage.setItem('flexy_user', JSON.stringify(data));
+                    notify('🎉 Showroom completed successfully!', 'success');
+
+                    setTimeout(() => {
+                        window.location.href = 'home.html';
+                    }, 1200);
+
+                } catch (error) {
+                    console.error('Setup error:', error);
+                    notify(error.message || 'Error updating profile. Try another username.', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                }
+            });
+        });
+    </script>
+</body>
+</html>

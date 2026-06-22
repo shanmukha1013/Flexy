@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <title>FLEXY - Home</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-container container">
+            <div class="logo-section">
+                <div class="logo-icon" aria-hidden="true">
+                    <img src="assets/hammer.svg" alt="Hammer logo">
+                </div>
+                <div>
+                    <h1 class="app-logo">FLEXY</h1>
+                    <p class="app-tagline">Flexible Marketplace</p>
+                </div>
+            </div>
+            
+            <div class="header-actions">
+                <div class="search-container">
+                    <input type="text" placeholder="Search items..." class="search-input" id="global-search">
+                    <button class="search-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" 
+                                  stroke="#6B7280" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <button class="header-btn" onclick="window.location.href='sell.html'">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <span>Sell</span>
+                </button>
+                
+                <button class="header-btn" onclick="window.location.href='wallet.html'">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" 
+                              stroke="currentColor" stroke-width="2"/>
+                        <path d="M15 8H9V16H15V8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Wallet</span>
+                </button>
+                
+                <button class="header-btn" onclick="window.location.href='profile.html'">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M20 21V19C20 16.7909 18.2091 15 16 15H8C5.79086 15 4 16.7909 4 19V21" 
+                              stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    <span>Profile</span>
+                </button>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="main-container container">
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="hero-content">
+                <h2>Discover Amazing Items</h2>
+                <p>Find what you need or sell what you don't</p>
+                <button class="btn btn-primary" onclick="window.location.href='sell.html'">
+                    Start Selling
+                </button>
+            </div>
+        </section>
+        
+        <!-- Categories -->
+        <section class="categories-section">
+            <h3>Browse Categories</h3>
+            <div class="categories-grid">
+                <div class="category-card" onclick="filterCategory('electronics')">
+                    <div class="category-icon">📱</div>
+                    <span>Electronics</span>
+                </div>
+                <div class="category-card" onclick="filterCategory('fashion')">
+                    <div class="category-icon">👕</div>
+                    <span>Fashion</span>
+                </div>
+                <div class="category-card" onclick="filterCategory('home')">
+                    <div class="category-icon">🏠</div>
+                    <span>Home & Garden</span>
+                </div>
+                <div class="category-card" onclick="filterCategory('sports')">
+                    <div class="category-icon">⚽</div>
+                    <span>Sports</span>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Trending Items -->
+        <section class="trending-section">
+            <div class="section-header">
+                <h3>Trending Items</h3>
+                <a href="search.html" class="view-all">View All</a>
+            </div>
+            <div class="items-grid" id="trending-items">
+                <!-- Items loaded by JavaScript -->
+            </div>
+        </section>
+        
+        <!-- Recently Added -->
+        <section class="recent-section">
+            <div class="section-header">
+                <h3>Recently Added</h3>
+                <a href="search.html" class="view-all">View All</a>
+            </div>
+            <div class="items-grid" id="recent-items">
+                <!-- Items loaded by JavaScript -->
+            </div>
+        </section>
+    </main>
+    
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <a href="home.html" class="nav-item active">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" 
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Home</span>
+        </a>
+        <a href="search.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" 
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span>Search</span>
+        </a>
+        <a href="sell.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span>Sell</span>
+        </a>
+        <a href="wallet.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" 
+                      stroke="currentColor" stroke-width="2"/>
+                <path d="M15 8H9V16H15V8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+            <span>Wallet</span>
+        </a>
+        <a href="profile.html" class="nav-item">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M20 21V19C20 16.7909 18.2091 15 16 15H8C5.79086 15 4 16.7909 4 19V21" 
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            <span>Profile</span>
+        </a>
+    </nav>
+    
+    <script src="js/notify.js"></script>
+    <script src="js/home.js"></script>
+    <script src="js/api.js"></script>
+</body>
+</html>
