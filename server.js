@@ -24,6 +24,7 @@ app.use('/api/auctions', require('./routes/auctions'));
 app.use('/api/messages', require('./routes/messages'));
 app.use('/api/search', require('./routes/search'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/groups', require('./routes/groups'));
 
 // Fallback for SPA routing (if using HTML5 history API, otherwise just serve index.html)
 app.use((req, res) => {

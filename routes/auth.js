@@ -6,6 +6,37 @@ const { Resend } = require('resend');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const auth = require('../middleware/auth');
+const Post = require('../models/Post');
+const Community = require('../models/Community');
+const Group = require('../models/Group');
+const Auction = require('../models/Auction');
+
+async function getDynamicAchievements(userId) {
+    const achievements = [];
+    try {
+        const postCount = await Post.countDocuments({ author: userId });
+        if (postCount >= 1) achievements.push("First Flex");
+
+        const communityCount = await Community.countDocuments({ creator: userId });
+        if (communityCount >= 1) achievements.push("First Community");
+
+        const groupCount = await Group.countDocuments({ creator: userId });
+        if (groupCount >= 1) achievements.push("First Group");
+
+        const auctionCount = await Auction.countDocuments({ seller: userId });
+        if (auctionCount >= 1) achievements.push("First Auction");
+
+        const user = await User.findById(userId);
+        const cabinetCount = user && user.showcaseCabinet ? user.showcaseCabinet.length : 0;
+        if (cabinetCount >= 5) achievements.push("Elite Collector");
+
+        const followersCount = user && user.followers ? user.followers.length : 0;
+        if (followersCount >= 5) achievements.push("Legacy Builder");
+    } catch (err) {
+        console.error("Error calculating achievements dynamically:", err);
+    }
+    return achievements;
+}
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const JWT_SECRET = process.env.JWT_SECRET || 'flexy_secure_jwt_key_2026';
@@ -260,6 +291,8 @@ router.get('/me', auth, async (req, res) => {
             
         if (!user) return res.status(404).json({ error: 'User not found' });
         
+        const achievements = await getDynamicAchievements(user._id);
+        
         res.json({
             _id: user._id,
             email: user.email,
@@ -274,7 +307,8 @@ router.get('/me', auth, async (req, res) => {
             followers: user.followers,
             following: user.following,
             showcaseCabinet: user.showcaseCabinet,
-            communities: user.communities
+            communities: user.communities,
+            achievements
         });
     } catch (err) {
         console.error('GET me error:', err);

@@ -2,8 +2,37 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const auth = require('../middleware/auth');
+const Post = require('../models/Post');
+const Community = require('../models/Community');
+const Group = require('../models/Group');
+const Auction = require('../models/Auction');
 
-// Middleware to protect routes would go here (verify JWT)
+async function getDynamicAchievements(userId) {
+    const achievements = [];
+    try {
+        const postCount = await Post.countDocuments({ author: userId });
+        if (postCount >= 1) achievements.push("First Flex");
+
+        const communityCount = await Community.countDocuments({ creator: userId });
+        if (communityCount >= 1) achievements.push("First Community");
+
+        const groupCount = await Group.countDocuments({ creator: userId });
+        if (groupCount >= 1) achievements.push("First Group");
+
+        const auctionCount = await Auction.countDocuments({ seller: userId });
+        if (auctionCount >= 1) achievements.push("First Auction");
+
+        const user = await User.findById(userId);
+        const cabinetCount = user && user.showcaseCabinet ? user.showcaseCabinet.length : 0;
+        if (cabinetCount >= 5) achievements.push("Elite Collector");
+
+        const followersCount = user && user.followers ? user.followers.length : 0;
+        if (followersCount >= 5) achievements.push("Legacy Builder");
+    } catch (err) {
+        console.error("Error calculating achievements dynamically:", err);
+    }
+    return achievements;
+}
 
 // Get registered users for suggestions (excluding current user)
 router.get('/', auth, async (req, res) => {
@@ -37,7 +66,12 @@ router.get('/:id', async (req, res) => {
             .populate('showcaseCabinet')
             .populate('communities');
         if (!user) return res.status(404).json({ error: 'User not found' });
-        res.json(user);
+        
+        const achievements = await getDynamicAchievements(user._id);
+        const userObj = user.toObject();
+        userObj.achievements = achievements;
+        
+        res.json(userObj);
     } catch (error) {
         console.error('MONGOOSE ERROR:', error);
         res.status(500).json({ error: 'Server error', details: error.message });

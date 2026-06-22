@@ -923,6 +923,7 @@ async function initProfilePage() {
             <button class="tab-trigger" onclick="window.switchProfileTab('flexes', '${user._id}')">Flexes</button>
             <button class="tab-trigger" onclick="window.switchProfileTab('auctions', '${user._id}')">Auctions</button>
             <button class="tab-trigger" onclick="window.switchProfileTab('communities', '${user._id}')">Communities</button>
+            <button class="tab-trigger" onclick="window.switchProfileTab('groups', '${user._id}')">Groups</button>
         </div>
         
         <div class="museum-grid animate-fade-up stagger-3" id="showcase-cabinet"></div>
@@ -1057,6 +1058,28 @@ window.switchProfileTab = async function(tab, userId) {
                         <h3 style="font-family: var(--font-brand); color: var(--text-muted); margin-bottom: 1rem;">Not joined any communities yet.</h3>
                     </div>
                 `;
+            }
+        } else if (tab === 'groups') {
+            try {
+                const groups = await api.get(`/groups/user/${userId}`);
+                if (groups && groups.length > 0) {
+                    grid.innerHTML = groups.map(g => `
+                        <div class="glass-card hover-lift" style="padding: 1.5rem; cursor: pointer; text-align: left;" onclick="window.location.href='community.html?id=${g.community ? g.community._id : ''}'">
+                            <h4 style="margin: 0 0 0.5rem 0; font-family: var(--font-brand); font-size: 1.25rem;">${g.name}</h4>
+                            <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.4; margin-bottom: 0.5rem;">${g.description || ''}</p>
+                            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">🏛️ Part of ${g.community ? g.community.name : 'Community'}</span>
+                        </div>
+                    `).join('');
+                } else {
+                    grid.innerHTML = `
+                        <div style="text-align: center; padding: 3rem; background: var(--dark-1); border-radius: var(--radius-xl); border: 1px solid var(--border-glass); grid-column: 1 / -1; width: 100%;">
+                            <h3 style="font-family: var(--font-brand); color: var(--text-muted); margin-bottom: 1rem;">Not joined any groups yet.</h3>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                console.error(err);
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-muted);">Error loading groups.</div>';
             }
         }
     } catch(err) {
@@ -1336,6 +1359,41 @@ async function initCommunityPage() {
             `).join('');
         }
 
+        // Render sub-groups
+        const groupsList = document.getElementById('community-groups-list');
+        if (groupsList) {
+            try {
+                const groups = await api.get(`/communities/${communityId}/groups`);
+                if (groups.length === 0) {
+                    groupsList.innerHTML = '<p style="font-size: 0.8rem; color: var(--text-muted); text-align: center; margin: 1rem 0;">No sub-groups created yet.</p>';
+                } else {
+                    groupsList.innerHTML = groups.map(g => {
+                        const userJoined = g.members && g.members.some(mId => (mId._id || mId) === currentUser._id);
+                        const memberCount = g.members ? g.members.length : 0;
+                        return `
+                            <div class="glass-card" style="padding: 0.75rem; border-radius: var(--radius-md); background: var(--dark-2); display: flex; flex-direction: column; gap: 0.5rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
+                                    <div style="text-align: left;">
+                                        <h5 style="font-family: var(--font-brand); font-size: 0.9rem; font-weight: bold; margin: 0; color: var(--text-primary);">${g.name}</h5>
+                                        <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0.2rem 0 0 0; line-height: 1.3;">${g.description}</p>
+                                        <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: 500;">👥 ${memberCount} ${memberCount === 1 ? 'member' : 'members'}</span>
+                                    </div>
+                                    ${isMember ? `
+                                        <button class="btn ${userJoined ? 'btn-outline' : 'btn-primary'}" style="padding: 0.2rem 0.6rem; font-size: 0.75rem; border-radius: var(--radius-full); flex-shrink: 0;" onclick="window.toggleGroupMembership('${g._id}', ${userJoined}, '${communityId}')">
+                                            ${userJoined ? 'Leave' : 'Join'}
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            } catch (err) {
+                console.error("Error loading groups:", err);
+                groupsList.innerHTML = '<p style="font-size: 0.8rem; color: var(--text-muted);">Failed to load groups.</p>';
+            }
+        }
+
         // Join / Admitted Button State
         const joinBtn = document.getElementById('community-join-btn');
         const postCard = document.getElementById('community-new-post-card');
@@ -1506,6 +1564,44 @@ window.createCommunityPost = async function() {
         initCommunityPage(); // reload posts
     } catch(err) {
         alert(err.message);
+    }
+};
+
+window.toggleGroupMembership = async function(groupId, isMember, communityId) {
+    try {
+        const action = isMember ? 'leave' : 'join';
+        await api.post(`/groups/${groupId}/${action}`);
+        initCommunityPage();
+    } catch (err) {
+        alert(err.message || "Failed to update group membership");
+    }
+};
+
+window.triggerCreateGroup = async function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const communityId = urlParams.get('id');
+    if (!communityId) return;
+
+    // Check if user is a member of the community first
+    const community = await api.get('/communities/' + communityId);
+    const currentUser = JSON.parse(localStorage.getItem('flexy_user') || '{}');
+    const isMember = community.members && community.members.some(m => (m._id || m) === currentUser._id);
+    if (!isMember) {
+        alert("You must join this community before creating a sub-group.");
+        return;
+    }
+
+    const name = prompt("Enter sub-group name:");
+    if (!name || !name.trim()) return;
+    const description = prompt("Enter sub-group description:");
+    if (!description || !description.trim()) return;
+
+    try {
+        await api.post(`/communities/${communityId}/groups`, { name: name.trim(), description: description.trim() });
+        alert("Sub-group created successfully!");
+        initCommunityPage();
+    } catch (err) {
+        alert(err.message || "Failed to create sub-group");
     }
 };
 async function loadFollowSuggestions() {

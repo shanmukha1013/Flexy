@@ -178,6 +178,17 @@ router.post('/:id/groups', auth, async (req, res) => {
     }
 });
 
+// Get Groups within Community
+router.get('/:id/groups', auth, async (req, res) => {
+    try {
+        const groups = await Group.find({ community: req.params.id });
+        res.json(groups);
+    } catch (error) {
+        console.error('Error fetching groups:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 // Get single community details
 router.get('/:id', async (req, res) => {
     try {
