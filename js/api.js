@@ -357,9 +357,16 @@ async function loadCommunities() {
         const user = JSON.parse(localStorage.getItem('flexy_user') || '{}');
         comms.forEach(c => {
             const isMember = c.members && c.members.some(m => (m._id || m) === user._id);
-            const buttonHtml = isMember 
-                ? `<button class="btn btn-outline" disabled style="margin-left: auto; padding: 0.6rem 1.5rem; border-radius: var(--radius-full); font-weight: 600; opacity: 0.7; cursor: default;">Admitted</button>`
-                : `<button class="btn btn-primary" onclick="event.stopPropagation(); window.joinCommunity('${c._id}')" style="margin-left: auto; padding: 0.6rem 1.5rem; border-radius: var(--radius-full); font-weight: 600;">Request Admission</button>`;
+            const isPending = c.pendingRequests && c.pendingRequests.some(m => (m._id || m) === user._id);
+            let buttonHtml = '';
+            if (isMember) {
+                buttonHtml = `<button class="btn btn-outline" disabled style="margin-left: auto; padding: 0.6rem 1.5rem; border-radius: var(--radius-full); font-weight: 600; opacity: 0.7; cursor: default;">Admitted</button>`;
+            } else if (isPending) {
+                buttonHtml = `<button class="btn btn-outline" disabled style="margin-left: auto; padding: 0.6rem 1.5rem; border-radius: var(--radius-full); font-weight: 600; opacity: 0.7; cursor: default; border-color: var(--primary); color: var(--primary);">Pending</button>`;
+            } else {
+                const label = c.privacy === 'private' ? 'Request Admission' : 'Join';
+                buttonHtml = `<button class="btn btn-primary" onclick="event.stopPropagation(); window.joinCommunity('${c._id}')" style="margin-left: auto; padding: 0.6rem 1.5rem; border-radius: var(--radius-full); font-weight: 600;">${label}</button>`;
+            }
 
             html += `
             <div class="glass-card hover-lift" style="padding: 1.5rem; margin-bottom: 1.5rem; cursor: pointer; text-align: left;" onclick="window.location.href='community.html?id=${c._id}'">
@@ -1257,8 +1264,12 @@ window.joinCommunity = async function(id) {
     if (!api.token) return alert('Please login to join a community.');
     try {
         const user = JSON.parse(localStorage.getItem('flexy_user') || '{}');
-        await api.post('/communities/' + id + '/join', { userId: user._id });
-        alert('Joined community successfully!');
+        const res = await api.post('/communities/' + id + '/join', { userId: user._id });
+        if (res.pending) {
+            alert('Request sent to creator successfully!');
+        } else {
+            alert('Joined community successfully!');
+        }
         if (typeof loadCommunities === 'function') loadCommunities();
     } catch(err) {
         alert(err.message);
@@ -1497,8 +1508,106 @@ window.createCommunityPost = async function() {
         alert(err.message);
     }
 };
+async function loadFollowSuggestions() {
+    const container = document.getElementById('collectors-to-follow-container');
+    if (!container) return;
+
+    try {
+        const users = await api.get('/users');
+        if (users.length === 0) {
+            container.innerHTML = '<p style="font-size: 0.85rem; color: var(--text-muted); text-align: center;">No suggestions found</p>';
+            return;
+        }
+
+        const currentUser = JSON.parse(localStorage.getItem('flexy_user') || '{}');
+        let me;
+        try {
+            me = await api.get('/auth/me');
+        } catch (e) {
+            me = currentUser;
+        }
+
+        const followingIds = new Set((me.following || []).map(f => (f._id || f).toString()));
+
+        // Display suggestions (excluding already followed users)
+        const suggestions = users.filter(u => !followingIds.has(u._id.toString())).slice(0, 5);
+
+        if (suggestions.length === 0) {
+            container.innerHTML = '<p style="font-size: 0.85rem; color: var(--text-muted); text-align: center;">You follow everyone!</p>';
+            return;
+        }
+
+        let html = '';
+        suggestions.forEach(u => {
+            const avatarStyle = u.avatarUrl || u.profilePhoto
+                ? `background-image: url('${u.avatarUrl || u.profilePhoto}'); background-size: cover; background-position: center; color: transparent;`
+                : 'background: var(--primary);';
+            const initials = u.avatarInitials || (u.displayName || u.username).substring(0, 2).toUpperCase();
+
+            html += `
+            <div style="display: flex; justify-content: space-between; align-items: center;" id="suggestion-row-${u._id}">
+                <div style="display: flex; align-items: center; gap: 0.8rem; cursor: pointer;" onclick="window.location.href='profile.html?id=${u._id}'">
+                    <div class="avatar-circle" style="width: 35px; height: 35px; font-size: 1rem; ${avatarStyle}">${u.avatarUrl || u.profilePhoto ? '' : initials}</div>
+                    <div style="text-align: left;">
+                        <div style="font-weight: 600; font-size: 0.9rem;">${u.displayName || u.username}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">@${u.username}</div>
+                    </div>
+                </div>
+                <button class="btn btn-outline" style="padding: 0.2rem 0.6rem; font-size: 0.75rem;" onclick="followSuggestedUser('${u._id}')">Follow</button>
+            </div>`;
+        });
+
+        container.innerHTML = html;
+
+    } catch (err) {
+        console.error("Error loading follow suggestions:", err);
+        container.innerHTML = '<p style="font-size: 0.85rem; color: var(--danger); text-align: center;">Error loading suggestions</p>';
+    }
+}
+
+window.followSuggestedUser = async function(userId) {
+    try {
+        await api.post(`/users/${userId}/follow`);
+        const row = document.getElementById(`suggestion-row-${userId}`);
+        if (row) {
+            const btn = row.querySelector('button');
+            if (btn) {
+                btn.className = 'btn btn-primary';
+                btn.innerText = 'Following';
+                btn.disabled = true;
+                btn.style.pointerEvents = 'none';
+            }
+        }
+        if (typeof loadHomeFeed === 'function') {
+            loadHomeFeed();
+        }
+    } catch(err) {
+        alert(err.message);
+    }
+};
+
+async function updateNotificationBadge() {
+    const badge = document.getElementById('nav-notification-badge');
+    if (!badge) return;
+
+    try {
+        const notifications = await api.get('/notifications');
+        const unreadCount = notifications.filter(n => !n.read).length;
+        
+        if (unreadCount > 0) {
+            badge.innerText = unreadCount;
+            badge.style.display = 'inline-block';
+        } else {
+            badge.style.display = 'none';
+        }
+    } catch (err) {
+        badge.style.display = 'none';
+    }
+}
 
 document.addEventListener("DOMContentLoaded", () => {
     initCommunityPage();
+    loadFollowSuggestions();
+    updateNotificationBadge();
 });
 

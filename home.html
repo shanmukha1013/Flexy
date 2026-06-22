@@ -34,6 +34,7 @@
                 <button class="header-btn" onclick="window.location.href='collections.html'">Collections</button>
                 <button class="header-btn" onclick="window.location.href='auctions.html'">Auctions</button>
                 <button class="header-btn" onclick="window.location.href='messages.html'">Messages</button>
+<button class="header-btn" id="nav-notifications-btn" onclick="window.location.href='notifications.html'">Notifications <span class="notification-badge" id="nav-notification-badge" style="display: none; background: #EF4444; color: white; border-radius: 50%; padding: 0.15rem 0.4rem; font-size: 0.7rem; font-weight: bold; margin-left: 0.3rem;">0</span></button>
                 <button class="header-btn" onclick="window.location.href='wallet.html'">Wallet</button>
                 <button class="header-btn" onclick="window.location.href='profile.html'">Profile</button>
             </div>
@@ -129,7 +130,7 @@
 
             <div class="glass-card" style="padding: 1.5rem;">
                 <h4 style="margin: 0 0 1rem 0; font-family: var(--font-brand); font-weight: 500; color: var(--text-secondary); font-size: 1.1rem; letter-spacing: 0.5px;">Collectors to Follow</h4>
-                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div id="collectors-to-follow-container" style="display: flex; flex-direction: column; gap: 1rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div style="display: flex; align-items: center; gap: 0.8rem; cursor: pointer;">
                             <div class="avatar-circle" style="width: 35px; height: 35px; font-size: 1rem;">A</div>
