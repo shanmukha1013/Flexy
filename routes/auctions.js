@@ -29,11 +29,20 @@ router.get('/:id', async (req, res) => {
 // Create auction
 router.post('/', async (req, res) => {
     try {
-        const { title, description, image, sellerId, startingBid, durationHours } = req.body;
+        const { 
+            title, description, category, images, videos, 
+            origin, year, condition, rarity, estimatedValue, 
+            auctionType, reservePrice, ownershipProof, authenticityDocs,
+            sellerId, startingBid, durationHours 
+        } = req.body;
         const endTime = new Date(Date.now() + durationHours * 60 * 60 * 1000);
         
         const auction = new Auction({
-            title, description, image, seller: sellerId, startingBid, currentBid: startingBid, endTime
+            title, description, category, 
+            image: images && images.length > 0 ? images[0] : null,
+            images, videos, origin, year, condition, rarity, estimatedValue,
+            auctionType, reservePrice, ownershipProof, authenticityDocs,
+            seller: sellerId, startingBid, currentBid: startingBid, endTime
         });
         await auction.save();
         res.json(auction);
@@ -106,3 +115,23 @@ router.post('/:id/bid', async (req, res) => {
 });
 
 module.exports = router;
+
+// Watch Auction
+router.post('/:id/watch', async (req, res) => {
+    try {
+        const { userId } = req.body;
+        const auction = await Auction.findById(req.params.id);
+        if (!auction) return res.status(404).json({ error: 'Not found' });
+        
+        if (!auction.watchers.includes(userId)) {
+            auction.watchers.push(userId);
+            await auction.save();
+            
+            const User = require('../models/User');
+            await User.findByIdAndUpdate(userId, { $addToSet: { savedAuctions: auction._id } });
+        }
+        res.json({ message: 'Auction added to watchlist' });
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});

@@ -19,6 +19,10 @@ const CommunitySchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     }],
+    groups: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Group'
+    }],
     pendingRequests: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'

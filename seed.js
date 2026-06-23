@@ -13,6 +13,9 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/flexy')
     .catch(err => console.error(err));
 
 async function seedDatabase() {
+    // Disabled fake/demo seeding. Use production data only.
+    console.log('🧹 Seed disabled: fake/demo data removed.');
+    return;
     try {
         // Clear existing
         await User.deleteMany({});

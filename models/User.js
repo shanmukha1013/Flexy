@@ -73,10 +73,30 @@ const UserSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
-    isVerified: {
+    isEmailVerified: {
         type: Boolean,
         default: false
     },
+    isIdentityVerified: {
+        type: Boolean,
+        default: false
+    },
+    isTrustedSeller: {
+        type: Boolean,
+        default: false
+    },
+    salesCount: {
+        type: Number,
+        default: 0
+    },
+    auctionsCompleted: {
+        type: Number,
+        default: 0
+    },
+    savedAuctions: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Auction'
+    }],
     otpCode: {
         type: String
     },

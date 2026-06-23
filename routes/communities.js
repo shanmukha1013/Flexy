@@ -22,18 +22,31 @@ router.get('/', async (req, res) => {
 // Create community
 router.post('/', auth, async (req, res) => {
     try {
-        const { name, description, icon, privacy } = req.body;
+        const { name, description, icon, privacy, groups } = req.body;
         const creatorId = req.user.userId;
         
+        // Ensure at least one group is provided
+        if (!groups || groups.length === 0) {
+            return res.status(400).json({ error: 'A community must contain at least one group.' });
+        }
+
         const community = new Community({
             name,
             description,
             icon: icon || '🏛️',
             privacy: privacy || 'public',
             creator: creatorId,
-            members: [creatorId]
+            members: [creatorId],
+            groups: groups
         });
         await community.save();
+
+        // Update each group to point to this community
+        await Group.updateMany(
+            { _id: { $in: groups } },
+            { $set: { community: community._id } }
+        );
+
         res.json(community);
     } catch (error) {
         console.error('Error creating community:', error);

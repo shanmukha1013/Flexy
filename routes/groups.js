@@ -2,6 +2,26 @@ const express = require('express');
 const router = express.Router();
 const Group = require('../models/Group');
 const auth = require('../middleware/auth');
+// Create Group
+router.post('/', auth, async (req, res) => {
+    try {
+        const { name, description } = req.body;
+        const userId = req.user.userId;
+
+        const group = new Group({
+            name,
+            description,
+            creator: userId,
+            members: [userId]
+        });
+
+        await group.save();
+        res.status(201).json(group);
+    } catch (error) {
+        console.error('Error creating group:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 
 // Join Group
 router.post('/:id/join', auth, async (req, res) => {
@@ -13,6 +33,12 @@ router.post('/:id/join', auth, async (req, res) => {
         if (!group.members.includes(userId)) {
             group.members.push(userId);
             await group.save();
+            
+            // Add to parent community (WhatsApp style)
+            const Community = require('../models/Community');
+            await Community.findByIdAndUpdate(group.community, {
+                $addToSet: { members: userId }
+            });
         }
         res.json({ message: 'Joined group successfully', group });
     } catch (error) {

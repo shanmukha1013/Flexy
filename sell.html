@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FLEXY - List New Auction</title>
+    <title>Create Auction | FLEXY Collectors</title>
     <link rel="stylesheet" href="css/style.css">
-    <script src="js/loader.js"></script>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <style>
-        /* Step Indicator Custom Polish */
         .step-indicator {
             display: flex;
             justify-content: space-between;
@@ -52,6 +51,11 @@
             color: var(--black);
             box-shadow: 0 0 15px var(--primary-glow-thick);
         }
+        .step.completed .step-number {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: var(--black);
+        }
         .step-label {
             font-size: 0.8rem;
             font-weight: 600;
@@ -64,7 +68,6 @@
             color: var(--text-primary);
         }
         
-        /* Wizard Steps Visibility */
         .form-step {
             display: none;
             animation: slide-in 0.4s var(--ease-spring);
@@ -77,61 +80,14 @@
             to { transform: translateY(0); opacity: 1; }
         }
         
-        /* Premium Condition Selection Cards */
-        .condition-options, .price-type-options {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1rem;
-            margin-top: 0.5rem;
-        }
-        @media(max-width:768px) {
-            .condition-options, .price-type-options {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-        @media(max-width:480px) {
-            .condition-options, .price-type-options {
-                grid-template-columns: 1fr;
-            }
-        }
-        .condition-option input, .price-type-option input {
-            display: none;
-        }
-        .condition-card, .price-type-card {
-            background: var(--dark-2);
-            border: 1px solid var(--border-glass);
-            border-radius: var(--radius-md);
-            padding: 1.25rem 1rem;
-            text-align: center;
-            cursor: pointer;
-            transition: all var(--transition-fast);
-            height: 100%;
+        .form-actions {
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-        }
-        .condition-option input:checked + .condition-card,
-        .price-type-option input:checked + .price-type-card {
-            border-color: var(--primary);
-            background: var(--primary-glow);
-            box-shadow: 0 0 10px var(--primary-glow);
-        }
-        .condition-icon, .price-type-icon {
-            font-size: 1.75rem;
-        }
-        .condition-title, .price-type-title {
-            font-weight: 700;
-            font-size: 0.95rem;
-            color: var(--text-primary);
-        }
-        .condition-desc, .price-type-desc {
-            font-size: 0.75rem;
-            color: var(--text-muted);
+            justify-content: space-between;
+            margin-top: 3rem;
+            border-top: 1px solid var(--border-subtle);
+            padding-top: 1.5rem;
         }
         
-        /* Drag-and-drop Photo Area */
         .photo-upload-area {
             border: 2px dashed var(--border-glass);
             background: rgba(255, 255, 255, 0.01);
@@ -143,417 +99,271 @@
         }
         .photo-upload-area:hover {
             border-color: var(--primary);
-            background: var(--primary-glow);
+            background: rgba(15, 157, 122, 0.05);
         }
-        .upload-hint {
-            color: var(--primary);
-            font-weight: 600;
-            font-size: 0.9rem;
-            margin-top: 0.25rem;
+        .photo-preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        .photo-preview {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: var(--radius-md);
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            border: 1px solid var(--border-glass);
         }
         
-        /* Form Actions Row spacing */
-        .form-actions {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 3rem;
-            border-top: 1px solid var(--border-subtle);
-            padding-top: 1.5rem;
+        .auction-type-card {
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            background: var(--dark-2);
+        }
+        .auction-type-card:hover {
+            border-color: var(--primary);
+        }
+        .auction-type-card.selected {
+            border-color: var(--primary);
+            background: rgba(15, 157, 122, 0.1);
         }
     </style>
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
 </head>
-<body>
+<body class="page-fade-in">
     <!-- Header -->
     <header class="app-header">
         <div class="header-container container">
-            <div class="logo-section" onclick="window.location.href='home.html'">
-                <button class="back-btn" onclick="window.history.back(); event.stopPropagation();" style="background: none; border: none; font-size: 1.25rem; color: var(--text-primary); cursor: pointer; margin-right: 0.5rem;">←</button>
-                <div class="logo-icon" aria-hidden="true" style="color: var(--primary);">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 100%; height: 100%;">
-    <path d="m15 5 4 4" />
-    <path d="m11 9 4 4" />
-    <path d="m13 7-8 8" />
-    <path d="M9 11l-4 4" />
-    <path d="m13 13-7 7" />
-    <path d="M20 20H10" />
-</svg>
-                </div>
-                <div>
+            <div class="logo-section" onclick="window.location.href='home.html'" style="cursor: pointer;">
+                <div style="display: flex; align-items: center;">
+                    <div class="logo-icon" aria-hidden="true" style="color: var(--primary); width: 32px; height: 32px; margin-right: 0.5rem;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 100%; height: 100%;"><path d="m15 5 4 4" /><path d="m11 9 4 4" /><path d="m13 7-8 8" /><path d="M9 11l-4 4" /><path d="m13 13-7 7" /><path d="M20 20H10" /></svg>
+                    </div>
                     <h1 class="app-logo">FLEXY</h1>
-                    <p class="app-tagline">Every Item Finds Its Value</p>
                 </div>
             </div>
             
             <div class="header-actions">
-    <button class="header-btn" onclick="window.location.href='home.html'">Home</button>
-    <button class="header-btn" onclick="window.location.href='explore.html'">Explore</button>
-    <button class="header-btn" onclick="window.location.href='communities.html'">Communities</button>
-    <button class="header-btn" onclick="window.location.href='collections.html'">Collections</button>
-    <button class="header-btn" onclick="window.location.href='auctions.html'">Auctions</button>
-    <button class="header-btn" onclick="window.location.href='messages.html'">Messages</button>
-<button class="header-btn" id="nav-notifications-btn" onclick="window.location.href='notifications.html'">Notifications <span class="notification-badge" id="nav-notification-badge" style="display: none; background: #EF4444; color: white; border-radius: 50%; padding: 0.15rem 0.4rem; font-size: 0.7rem; font-weight: bold; margin-left: 0.3rem;">0</span></button>
-    <button class="header-btn" onclick="window.location.href='wallet.html'">Wallet</button>
-    <button class="header-btn" onclick="window.location.href='profile.html'">Profile</button>
-</div>
-          </div>
-      </header>
-    
+                <button class="header-btn" onclick="window.location.href='home.html'">Home</button>
+                <button class="header-btn" onclick="window.location.href='explore.html'">Explore</button>
+                <button class="header-btn" onclick="window.location.href='communities.html'">Communities</button>
+                <button class="header-btn" onclick="window.location.href='collections.html'">Collections</button>
+                <button class="header-btn active" onclick="window.location.href='auctions.html'">Auctions</button>
+                <button class="header-btn" onclick="window.location.href='messages.html'">Messages</button>
+                <button class="header-btn" id="nav-notifications-btn" onclick="window.location.href='notifications.html'">Notifications</button>
+                <button class="header-btn" onclick="window.location.href='wallet.html'">Wallet</button>
+                <button class="header-btn" onclick="window.location.href='profile.html'">Profile</button>
+                <button class="btn btn-primary" onclick="window.location.href='sell.html'" style="margin-left: 1rem; padding: 0.4rem 1.2rem; border-radius: var(--radius-full);">Sell Item</button>
+            </div>
+        </div>
+    </header>
+
     <!-- Main Content -->
-    <main class="main-container container" style="padding-top: 2rem; padding-bottom: 4rem;">
-        <form id="sell-form" class="sell-form card glass-card" style="max-width: 800px; margin: 0 auto; padding: 2.5rem;">
-            <!-- Step Indicator -->
+    <main class="main-container container" style="max-width: 800px; padding-top: 3rem;">
+        
+        <div class="glass-card animate-fade-up stagger-1" style="padding: 2.5rem;">
+            
             <div class="step-indicator">
-                <div class="step active" data-step="1">
+                <div class="step active" id="step-1-indicator">
                     <div class="step-number">1</div>
-                    <div class="step-label">Details</div>
+                    <div class="step-label">Basic Info</div>
                 </div>
-                <div class="step" data-step="2">
+                <div class="step" id="step-2-indicator">
                     <div class="step-number">2</div>
-                    <div class="step-label">Photos</div>
+                    <div class="step-label">Details & Proof</div>
                 </div>
-                <div class="step" data-step="3">
+                <div class="step" id="step-3-indicator">
                     <div class="step-number">3</div>
-                    <div class="step-label">Pricing</div>
+                    <div class="step-label">Auction Settings</div>
                 </div>
-                <div class="step" data-step="4">
+                <div class="step" id="step-4-indicator">
                     <div class="step-number">4</div>
                     <div class="step-label">Review</div>
                 </div>
             </div>
-            
-            <!-- Step 1: Basic Details -->
+
+            <!-- STEP 1: Basic Info & Media -->
             <div class="form-step active" id="step-1">
-                <div class="form-section">
-                    <h3 style="font-size: 1.5rem; margin-bottom: 1.5rem;">What are you selling₹</h3>
-                    
-                    <div class="form-group">
-                        <label for="item-title">Item Title *</label>
-                        <input type="text" id="item-title" placeholder="e.g., iPhone 14 Pro Max 256GB" maxlength="100" required>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Be specific and descriptive</div>
+                <h2 style="font-family: var(--font-brand); margin-bottom: 0.5rem;">Basic Information</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 2rem;">Start with high-quality photos and a clear title.</p>
+                
+                <div class="form-group">
+                    <label>Upload Media (Images/Video)</label>
+                    <div class="photo-upload-area" onclick="document.getElementById('file-upload').click()">
+                        <div style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.8;">📸</div>
+                        <h4 style="margin: 0 0 0.5rem 0; color: var(--text-primary);">Click to upload photos</h4>
+                        <p style="margin: 0; color: var(--text-muted); font-size: 0.85rem;">JPEG, PNG, MP4 up to 10MB</p>
                     </div>
-                    
+                    <input type="file" id="file-upload" multiple accept="image/*,video/*" style="display: none;" onchange="sellApp.handleFileUpload(event)">
+                    <div class="photo-preview-grid" id="photo-preview-grid"></div>
+                </div>
+
+                <div class="form-group" style="margin-top: 1.5rem;">
+                    <label>Item Title <span class="required">*</span></label>
+                    <input type="text" id="title" placeholder="e.g., Rare 1804 Silver Dollar" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Category <span class="required">*</span></label>
+                    <select id="category" required>
+                        <option value="" disabled selected>Select a category</option>
+                        <option value="Coins">Coins & Numismatics</option>
+                        <option value="Stamps">Stamps & Philately</option>
+                        <option value="Art">Fine Art</option>
+                        <option value="Antiques">Antiques</option>
+                        <option value="Memorabilia">Sports & Memorabilia</option>
+                        <option value="Watches">Luxury Watches</option>
+                        <option value="Other">Other Collectibles</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Story / Description <span class="required">*</span></label>
+                    <textarea id="description" rows="4" placeholder="Describe the history, significance, and any interesting facts..." required></textarea>
+                </div>
+            </div>
+
+            <!-- STEP 2: Detailed Attributes -->
+            <div class="form-step" id="step-2">
+                <h2 style="font-family: var(--font-brand); margin-bottom: 0.5rem;">Item Details & Authenticity</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 2rem;">Provide specific attributes to increase buyer confidence.</p>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     <div class="form-group">
-                        <label for="item-category">Category *</label>
-                        <select id="item-category" required style="background: var(--dark-2); border-color: var(--border-glass);">
-                            <option value="">Select a category</option>
-                            <option value="electronics">Electronics</option>
-                            <option value="fashion">Fashion</option>
-                            <option value="home">Home</option>
-                            <option value="garden">Garden</option>
-                            <option value="gaming">Gaming</option>
-                            <option value="collectibles">Collectibles</option>
-                            <option value="art">Art</option>
-                            <option value="vehicles">Vehicles</option>
+                        <label>Origin / Region</label>
+                        <input type="text" id="origin" placeholder="e.g., India, Roman Empire">
+                    </div>
+                    <div class="form-group">
+                        <label>Year / Era</label>
+                        <input type="text" id="year" placeholder="e.g., 1804, 2nd Century BC">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>Condition</label>
+                        <select id="condition">
+                            <option value="Mint">Mint (Flawless)</option>
+                            <option value="Excellent">Excellent</option>
+                            <option value="Good">Good (Minor Wear)</option>
+                            <option value="Fair">Fair (Restored/Worn)</option>
+                            <option value="Poor">Poor (Significant Damage)</option>
                         </select>
                     </div>
-                    
                     <div class="form-group">
-                        <label>Condition *</label>
-                        <div class="condition-options">
-                            <label class="condition-option">
-                                <input type="radio" name="condition" value="new" required>
-                                <div class="condition-card">
-                                    <div class="condition-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></div>
-                                    <div class="condition-title">New</div>
-                                    <div class="condition-desc">Never used, sealed</div>
-                                </div>
-                            </label>
-                            <label class="condition-option">
-                                <input type="radio" name="condition" value="like-new">
-                                <div class="condition-card">
-                                    <div class="condition-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></div>
-                                    <div class="condition-title">Like New</div>
-                                    <div class="condition-desc">Used once or twice</div>
-                                </div>
-                            </label>
-                            <label class="condition-option">
-                                <input type="radio" name="condition" value="good">
-                                <div class="condition-card">
-                                    <div class="condition-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg></div>
-                                    <div class="condition-title">Good</div>
-                                    <div class="condition-desc">Used, good condition</div>
-                                </div>
-                            </label>
-                            <label class="condition-option">
-                                <input type="radio" name="condition" value="fair">
-                                <div class="condition-card">
-                                    <div class="condition-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
-                                    <div class="condition-title">Fair</div>
-                                    <div class="condition-desc">Shows signs of use</div>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="item-description">Description *</label>
-                        <textarea id="item-description" placeholder="Describe your item in detail..." rows="5" maxlength="1000" required></textarea>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Include key features, specifications, and any defects</div>
+                        <label>Rarity</label>
+                        <select id="rarity">
+                            <option value="Common">Common</option>
+                            <option value="Uncommon">Uncommon</option>
+                            <option value="Rare">Rare</option>
+                            <option value="Ultra Rare">Ultra Rare</option>
+                            <option value="One of a Kind">One of a Kind</option>
+                        </select>
                     </div>
                 </div>
-                
-                <div class="form-actions" style="justify-content: flex-end;">
-                    <button type="button" class="btn btn-primary" onclick="nextStep(2)">
-                        <span>Next: Photos</span>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="stroke: currentColor;">
-                            <path d="M9 18L15 12L9 6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </button>
+
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label>Estimated Value (Optional) - ₹</label>
+                    <input type="number" id="estimatedValue" placeholder="0">
+                </div>
+
+                <div class="form-group" style="margin-top: 1.5rem;">
+                    <label>Proof of Authenticity URL (Optional)</label>
+                    <input type="text" id="authenticityDocs" placeholder="Link to certificate, appraisal, or grading report">
                 </div>
             </div>
-            
-            <!-- Step 2: Photos -->
-            <div class="form-step" id="step-2">
-                <div class="form-section">
-                    <h3 style="font-size: 1.5rem; margin-bottom: 0.5rem;">Add Photos</h3>
-                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">Add clear photos from different angles</p>
-                    
-                    <div class="photo-upload-area" id="photo-dropzone">
-                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" style="margin-bottom: 1rem;">
-                            <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" 
-                                  stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M17 8L12 3L7 8" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M12 3V15" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        <p style="font-weight: 700;">Drag & drop photos here</p>
-                        <p class="upload-hint">or click to browse</p>
-                        <input type="file" id="photo-upload" accept="image/*" multiple style="display: none;">
-                    </div>
-                    
-                    <div class="photo-preview" id="photo-preview" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1.5rem;">
-                        <!-- Photos will be previewed here -->
-                    </div>
-                    
-                    <div class="photo-tips" style="margin-top: 2rem; background: var(--dark-2); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-glass);">
-                        <h4 style="font-size: 0.95rem; margin-bottom: 0.5rem; color: var(--primary);"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg> Photo Tips:</h4>
-                        <ul style="font-size: 0.82rem; color: var(--text-secondary); padding-left: 1.25rem;">
-                            <li>Use natural lighting</li>
-                            <li>Show all angles of the item</li>
-                            <li>Include close-ups of important details</li>
-                            <li>Maximum 10 photos, 5MB each</li>
-                        </ul>
-                    </div>
-                </div>
-                
-                <div class="form-actions">
-                    <button type="button" class="btn btn-outline" onclick="prevStep(1)">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="stroke: currentColor;">
-                            <path d="M15 18L9 12L15 6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        <span>Back</span>
-                    </button>
-                    <button type="button" class="btn btn-primary" onclick="nextStep(3)">
-                        <span>Next: Pricing</span>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="stroke: currentColor;">
-                            <path d="M9 18L15 12L9 6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Step 3: Pricing -->
+
+            <!-- STEP 3: Auction Configuration -->
             <div class="form-step" id="step-3">
-                <div class="form-section">
-                    <h3 style="font-size: 1.5rem; margin-bottom: 1.5rem;">Set Your Price</h3>
-                    
-                    <div class="form-group">
-                        <label for="item-price">Starting Bid / Value (₹) *</label>
-                        <div class="price-input-container" style="display: flex; align-items: center; background: var(--dark-2); border: 1px solid var(--border-glass); border-radius: var(--radius-md); overflow: hidden;">
-                            <span class="price-prefix" style="padding: 0.75rem 1.25rem; background: var(--dark-3); border-right: 1px solid var(--border-glass); font-weight: 700; color: var(--primary);">₹</span>
-                            <input type="number" id="item-price" placeholder="0" min="1" step="1" required style="border: none !important; background: transparent !important; flex: 1;">
+                <h2 style="font-family: var(--font-brand); margin-bottom: 0.5rem;">Configure Auction</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 2rem;">How would you like to sell this item?</p>
+
+                <div class="form-group" style="margin-bottom: 2rem;">
+                    <label>Auction Type <span class="required">*</span></label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="auction-type-card selected" onclick="sellApp.selectType('Standard')">
+                            <h4 style="margin: 0 0 0.5rem 0; color: var(--primary);">Standard Auction</h4>
+                            <p style="margin: 0; font-size: 0.8rem; color: var(--text-secondary);">Highest bidder wins at the end of the duration.</p>
                         </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Price Type</label>
-                        <div class="price-type-options" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <label class="price-type-option">
-                                <input type="radio" name="price-type" value="auction" checked>
-                                <div class="price-type-card">
-                                    <div class="price-type-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg></div>
-                                    <div class="price-type-title">Auction</div>
-                                    <div class="price-type-desc">Let buyers bid</div>
-                                </div>
-                            </label>
-                            <label class="price-type-option">
-                                <input type="radio" name="price-type" value="showcase">
-                                <div class="price-type-card">
-                                    <div class="price-type-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M6 3h12l4 6-10 13L2 9Z"></path><path d="M11 3 8 9l4 13"></path><path d="M12 15V3"></path></svg></div>
-                                    <div class="price-type-title">Showcase / Flex</div>
-                                    <div class="price-type-desc">Show off to collectors</div>
-                                </div>
-                            </label>
+                        <div class="auction-type-card" onclick="sellApp.selectType('Reserve')">
+                            <h4 style="margin: 0 0 0.5rem 0; color: var(--primary);">Reserve Auction</h4>
+                            <p style="margin: 0; font-size: 0.8rem; color: var(--text-secondary);">Item won't sell unless bidding reaches your hidden reserve price.</p>
                         </div>
-                    </div>
-                    
-                    <!-- Auction Settings (hidden by default) -->
-                    <div class="auction-settings" id="auction-settings" style="display: none; background: rgba(255,255,255,0.01); border: 1px solid var(--border-glass); padding: 1.5rem; border-radius: var(--radius-md); margin: 1.5rem 0;">
-                        <div class="form-group">
-                            <label for="starting-bid">Starting Bid (₹)</label>
-                            <input type="number" id="starting-bid" placeholder="100" min="1">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="bid-increment">Bid Increment (₹)</label>
-                            <select id="bid-increment" style="background: var(--dark-2); border-color: var(--border-glass);">
-                                <option value="10">₹10</option>
-                                <option value="50" selected>₹50</option>
-                                <option value="100">₹100</option>
-                                <option value="500">₹500</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="auction-duration">Auction Duration</label>
-                            <select id="auction-duration" style="background: var(--dark-2); border-color: var(--border-glass);">
-                                <option value="1">1 day</option>
-                                <option value="3" selected>3 days</option>
-                                <option value="7">7 days</option>
-                                <option value="14">14 days</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="item-location">Location *</label>
-                        <input type="text" id="item-location" placeholder="Enter city or pin code" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Shipping Options</label>
-                        <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem;">
-                            <label class="shipping-option" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                                <input type="checkbox" id="shipping-pickup">
-                                <span style="font-size: 0.95rem;">Pickup Only</span>
-                            </label>
-                            <label class="shipping-option" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                                <input type="checkbox" id="shipping-delivery">
-                                <span style="font-size: 0.95rem;">I can deliver</span>
-                            </label>
-                            <label class="shipping-option" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                                <input type="checkbox" id="shipping-shippable">
-                                <span style="font-size: 0.95rem;">I can ship</span>
-                            </label>
+                        <div class="auction-type-card" onclick="sellApp.selectType('Flash')">
+                            <h4 style="margin: 0 0 0.5rem 0; color: var(--primary);">Flash Auction</h4>
+                            <p style="margin: 0; font-size: 0.8rem; color: var(--text-secondary);">High-intensity, short duration (24-48 hours).</p>
                         </div>
                     </div>
                 </div>
                 
-                <div class="form-actions">
-                    <button type="button" class="btn btn-outline" onclick="prevStep(2)">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="stroke: currentColor;">
-                            <path d="M15 18L9 12L15 6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        <span>Back</span>
-                    </button>
-                    <button type="button" class="btn btn-primary" onclick="nextStep(4)">
-                        <span>Next: Review</span>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="stroke: currentColor;">
-                            <path d="M9 18L15 12L9 6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </button>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                    <div class="form-group">
+                        <label>Starting Bid (₹) <span class="required">*</span></label>
+                        <input type="number" id="startingBid" placeholder="e.g., 1000" required min="1">
+                    </div>
+                    <div class="form-group" id="reserve-price-group" style="display: none;">
+                        <label>Reserve Price (₹) <span class="required">*</span></label>
+                        <input type="number" id="reservePrice" placeholder="Must be higher than starting bid">
+                    </div>
+                    <div class="form-group" id="duration-group">
+                        <label>Duration <span class="required">*</span></label>
+                        <select id="duration" required>
+                            <option value="1">1 Day</option>
+                            <option value="3">3 Days</option>
+                            <option value="5" selected>5 Days</option>
+                            <option value="7">7 Days</option>
+                        </select>
+                    </div>
                 </div>
+            </div>
+
+            <!-- STEP 4: Review -->
+            <div class="form-step" id="step-4">
+                <h2 style="font-family: var(--font-brand); margin-bottom: 0.5rem;">Review & Launch</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 2rem;">Double check your details before going live.</p>
+                
+                <div style="background: var(--dark-2); border-radius: var(--radius-md); padding: 1.5rem; border: 1px solid var(--border-glass);">
+                    <div style="display: flex; gap: 1.5rem;">
+                        <div id="review-image" style="width: 100px; height: 100px; border-radius: var(--radius-sm); background-size: cover; background-position: center; border: 1px solid var(--border-glass);"></div>
+                        <div style="flex: 1;">
+                            <h3 id="review-title" style="margin: 0 0 0.5rem 0; font-family: var(--font-brand);">Item Title</h3>
+                            <div style="display: flex; gap: 1rem; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                                <span><span style="color: var(--text-muted);">Category:</span> <span id="review-category"></span></span>
+                                <span><span style="color: var(--text-muted);">Condition:</span> <span id="review-condition"></span></span>
+                                <span><span style="color: var(--text-muted);">Rarity:</span> <span id="review-rarity"></span></span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; background: var(--dark-1); padding: 1rem; border-radius: var(--radius-sm);">
+                                <div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Auction Type</div>
+                                    <div style="font-weight: 600; color: var(--primary);" id="review-type">Standard</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Starting Bid</div>
+                                    <div style="font-weight: 600; font-size: 1.1rem;">₹<span id="review-bid"></span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="form-actions">
+                <button type="button" class="btn btn-outline" id="btn-back" style="display: none;" onclick="sellApp.prevStep()">Back</button>
+                <div style="flex: 1;"></div>
+                <button type="button" class="btn btn-primary" id="btn-next" onclick="sellApp.nextStep()">Next Step</button>
+                <button type="button" class="btn btn-primary" id="btn-submit" style="display: none;" onclick="sellApp.submitAuction()">Launch Auction</button>
             </div>
             
-            <!-- Step 4: Review -->
-            <div class="form-step" id="step-4">
-                <div class="form-section">
-                    <h3 style="font-size: 1.5rem; margin-bottom: 1.5rem;">Review & Publish</h3>
-                    
-                    <div class="review-summary" style="display: flex; flex-direction: column; gap: 1rem; background: var(--dark-2); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-glass);">
-                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem;">
-                            <span style="color: var(--text-secondary); font-size: 0.9rem;">Title</span>
-                            <span id="review-title" style="font-weight: 700;">-</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem;">
-                            <span style="color: var(--text-secondary); font-size: 0.9rem;">Category</span>
-                            <span id="review-category" style="font-weight: 700; text-transform: capitalize;">-</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem;">
-                            <span style="color: var(--text-secondary); font-size: 0.9rem;">Condition</span>
-                            <span id="review-condition" style="font-weight: 700; text-transform: uppercase;">-</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem;">
-                            <span style="color: var(--text-secondary); font-size: 0.9rem;">Price</span>
-                            <span id="review-price" style="font-weight: 700; color: var(--primary);">₹0</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem;">
-                            <span style="color: var(--text-secondary); font-size: 0.9rem;">Location</span>
-                            <span id="review-location" style="font-weight: 700;">-</span>
-                        </div>
-                        <div>
-                            <span style="color: var(--text-secondary); font-size: 0.9rem; display: block; margin-bottom: 0.25rem;">Description</span>
-                            <div id="review-description" style="color: var(--text-primary); font-size: 0.9rem; white-space: pre-wrap; max-height: 100px; overflow-y: auto;">-</div>
-                        </div>
-                    </div>
-                    
-                    <div style="margin-top: 2rem;">
-                        <label style="display: flex; gap: 0.75rem; cursor: pointer; align-items: flex-start;">
-                            <input type="checkbox" id="agree-terms" required style="margin-top: 0.25rem;">
-                            <span style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4;">I agree to FLEXY's <a href="#" style="color: var(--primary); text-decoration: none;">Seller Terms & Conditions</a> and certify that all details submitted are accurate and the item is legally mine to auction.</span>
-                        </label>
-                    </div>
-                </div>
-                
-                <div class="form-actions">
-                    <button type="button" class="btn btn-outline" onclick="prevStep(3)">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="stroke: currentColor;">
-                            <path d="M15 18L9 12L15 6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        <span>Back</span>
-                    </button>
-                    <button type="submit" class="btn btn-primary">
-                        <span id="publish-text">Publish Auction Item</span>
-                        <div class="loading-spinner" id="publish-loading" style="display: none; border-color: #000; border-right-color: transparent;"></div>
-                    </button>
-                </div>
-            </div>
-        </form>
+        </div>
     </main>
-    
-    <!-- Bottom Navigation for Mobile -->
-    <nav class="bottom-nav">
-        <a href="home.html" class="nav-item">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" 
-                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <span>Home</span>
-        </a>
-        <a href="search.html" class="nav-item">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" 
-                      stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-            <span>Auctions</span>
-        </a>
-        <a href="sell.html" class="nav-item active">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-            <span>Sell</span>
-        </a>
-        <a href="dashboard.html" class="nav-item">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="3" width="7" height="9" rx="1" stroke="currentColor" stroke-width="2"/>
-                <rect x="14" y="3" width="7" height="5" rx="1" stroke="currentColor" stroke-width="2"/>
-                <rect x="14" y="12" width="7" height="9" rx="1" stroke="currentColor" stroke-width="2"/>
-                <rect x="3" y="16" width="7" height="5" rx="1" stroke="currentColor" stroke-width="2"/>
-            </svg>
-            <span>Dashboard</span>
-        </a>
-        <a href="wallet.html" class="nav-item">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" 
-                      stroke="currentColor" stroke-width="2"/>
-                <path d="M15 8H9V16H15V8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-            </svg>
-            <span>Wallet</span>
-        </a>
-    </nav>
-    
+
     <script src="js/notify.js"></script>
-    <script src="js/sell.js"></script>
     <script src="js/api.js"></script>
+    <script src="js/sell.js"></script>
 </body>
 </html>

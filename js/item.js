@@ -40,8 +40,7 @@ class ItemDetail {
         }
     }
 
-    loadItem() {
-        // Get item ID from URL params
+    async loadItem() {
         const params = new URLSearchParams(window.location.search);
         const itemId = params.get('id');
 
@@ -50,17 +49,22 @@ class ItemDetail {
             return;
         }
 
-        // Load from localStorage
-        this.items = JSON.parse(localStorage.getItem('flexy_items') || '[]');
-        const item = this.items.find(i => i.id === itemId);
+        try {
+            let res = await fetch(`/api/auctions/${itemId}`);
+            if (res.ok) {
+                this.item = await res.json();
+            } else {
+                // If not found, try fetching as a regular item / collection item if such endpoint exists,
+                // For now, if it's not an auction, we might show error or redirect
+                this.showError('Item not found or auction ended.');
+                return;
+            }
 
-        if (!item) {
-            this.showError('Item not found. It may have been removed.');
-            return;
+            this.renderItem();
+        } catch (err) {
+            console.error(err);
+            this.showError('Error loading item from server.');
         }
-
-        this.item = item;
-        this.renderItem();
     }
 
     renderItem() {
@@ -99,14 +103,15 @@ class ItemDetail {
         this.renderSpecs(item);
 
         // Seller info
-        document.getElementById('seller-name').textContent = item.sellerName || 'Unknown';
+        const sName = item.seller?.displayName || item.seller?.username || 'Unknown';
+        document.getElementById('seller-name').textContent = sName;
         const sellerAv = document.getElementById('seller-av');
-        if (item.sellerAvatar) {
-            sellerAv.style.backgroundImage = `url(${item.sellerAvatar})`;
+        if (item.seller?.avatarUrl || item.seller?.avatarImage) {
+            sellerAv.style.backgroundImage = `url(${item.seller?.avatarUrl || item.seller?.avatarImage})`;
             sellerAv.style.backgroundSize = 'cover';
             sellerAv.textContent = '';
         } else {
-            sellerAv.textContent = (item.sellerName || 'S')[0].toUpperCase();
+            sellerAv.textContent = item.seller?.avatarInitials || sName.charAt(0).toUpperCase();
         }
 
         // Render based on type
@@ -286,18 +291,24 @@ class ItemDetail {
         }
 
         const sorted = [...bids].sort((a, b) => b.amount - a.amount);
-        el.innerHTML = sorted.map((bid, i) => `
+        el.innerHTML = sorted.map((bid, i) => {
+            const bName = bid.bidder?.displayName || bid.bidder?.username || 'Anonymous';
+            const bInit = bid.bidder?.avatarInitials || bName.charAt(0).toUpperCase();
+            const bAv = bid.bidder?.avatarUrl ? `url(${bid.bidder.avatarUrl})` : `linear-gradient(135deg, var(--primary), #ea580c)`;
+            
+            return \`
             <div class="bid-history-item">
                 <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <div style="width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), #ea580c); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: white;">${(bid.bidderName || 'A')[0].toUpperCase()}</div>
+                    <div style="width: 28px; height: 28px; border-radius: 50%; background: \${bAv}; background-size: cover; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: white;">\${!bid.bidder?.avatarUrl ? bInit : ''}</div>
                     <div>
-                        <div style="font-size: 0.85rem; font-weight: 600; ${i === 0 ? 'color: var(--primary);' : ''}">${bid.bidderName || 'Anonymous'} ${i === 0 ? '👑' : ''}</div>
-                        <div style="font-size: 0.72rem; color: var(--text-muted);">${this.timeAgo(bid.timestamp)}</div>
+                        <div style="font-size: 0.85rem; font-weight: 600; \${i === 0 ? 'color: var(--primary);' : ''}">\${bName} \${i === 0 ? '👑' : ''}</div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted);">\${this.timeAgo(bid.timestamp || bid.date || new Date())}</div>
                     </div>
                 </div>
-                <div style="font-weight: 700; ${i === 0 ? 'color: var(--primary);' : 'color: var(--text-secondary);'}">₹${this.formatNum(bid.amount)}</div>
+                <div style="font-weight: 700; \${i === 0 ? 'color: var(--primary);' : 'color: var(--text-secondary);'}">₹\${this.formatNum(bid.amount)}</div>
             </div>
-        `).join('');
+            \`;
+        }).join('');
     }
 
     renderDiscussion(item) {
@@ -307,16 +318,20 @@ class ItemDetail {
         if (comments.length === 0) {
             thread.innerHTML = '<p style="color: var(--text-muted); font-size: 0.85rem;">No comments yet. Start the discussion!</p>';
         } else {
-            thread.innerHTML = comments.map(c => `
+            thread.innerHTML = comments.map(c => {
+                const authorName = c.author?.displayName || c.author?.username || 'Collector';
+                const initial = c.author?.avatarInitials || authorName.charAt(0).toUpperCase();
+                return \`
                 <div class="comment-item">
-                    <div class="comment-avatar">${(c.authorName || 'A')[0].toUpperCase()}</div>
+                    <div class="comment-avatar">\${initial}</div>
                     <div class="comment-bubble">
-                        <div class="comment-author">${c.authorName || 'Collector'}</div>
-                        <div class="comment-text">${this.escapeHtml(c.text)}</div>
-                        <div class="comment-time">${this.timeAgo(c.timestamp)}</div>
+                        <div class="comment-author">\${authorName}</div>
+                        <div class="comment-text">\${this.escapeHtml(c.text)}</div>
+                        <div class="comment-time">\${this.timeAgo(c.timestamp || c.date || new Date())}</div>
                     </div>
                 </div>
-            `).join('');
+                \`;
+            }).join('');
         }
 
         // Show comment form or login prompt
@@ -329,7 +344,8 @@ class ItemDetail {
     startCountdown(item) {
         if (this.countdown) clearInterval(this.countdown);
 
-        const endTime = item.createdAt + (item.timeRemaining * 1000);
+        // backend sets item.endTime
+        const endTime = new Date(item.endTime).getTime();
 
         const updateCountdown = () => {
             const now = Date.now();
@@ -391,11 +407,7 @@ class ItemDetail {
     }
 
     saveItem(item) {
-        const idx = this.items.findIndex(i => i.id === item.id);
-        if (idx !== -1) {
-            this.items[idx] = item;
-            localStorage.setItem('flexy_items', JSON.stringify(this.items));
-        }
+        // Backend handles saving, no local storage update needed.
     }
 
     showError(msg) {

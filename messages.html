@@ -3,56 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FLEXY - Inbox & Notifications</title>
-    <meta name="description" content="Your Flexy messages, bid notifications, auction alerts, and follower updates.">
+    <title>Messages | FLEXY Collectors</title>
     <link rel="stylesheet" href="css/style.css">
-    <script src="js/loader.js"></script>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <style>
         .inbox-layout {
             display: grid;
             grid-template-columns: 320px 1fr;
             gap: 0;
-            min-height: calc(100vh - 200px);
+            min-height: calc(100vh - 150px);
             background: var(--dark-1);
             border: 1px solid var(--border-glass);
             border-radius: var(--radius-lg);
             overflow: hidden;
+            margin-top: 2rem;
+            margin-bottom: 2rem;
         }
         @media (max-width: 768px) {
             .inbox-layout { grid-template-columns: 1fr; }
-            .inbox-preview { display: none; }
-            .inbox-layout.chat-open .inbox-list { display: none; }
-            .inbox-layout.chat-open .inbox-preview { display: flex; }
+            .chat-main { display: none; }
+            .inbox-layout.chat-open .inbox-sidebar { display: none; }
+            .inbox-layout.chat-open .chat-main { display: flex; }
         }
 
-        /* Tabs */
-        .inbox-tabs {
-            display: flex;
-            background: var(--dark-2);
-            border-bottom: 1px solid var(--border-glass);
-        }
-        .inbox-tab {
-            flex: 1;
-            padding: 1rem;
-            text-align: center;
-            font-weight: 600;
-            font-size: 0.88rem;
-            color: var(--text-muted);
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            transition: all var(--transition-fast);
-        }
-        .inbox-tab.active {
-            color: var(--primary);
-            border-bottom-color: var(--primary);
-            background: var(--dark-1);
-        }
-
-        /* Sidebar List */
-        .inbox-list {
+        /* Sidebar */
+        .inbox-sidebar {
             border-right: 1px solid var(--border-glass);
-            overflow-y: auto;
-            max-height: calc(100vh - 220px);
+            display: flex;
+            flex-direction: column;
+            background: var(--dark-2);
         }
         .inbox-search {
             padding: 1rem;
@@ -60,15 +39,19 @@
         }
         .inbox-search input {
             width: 100%;
-            background: var(--dark-2);
+            background: var(--dark-1);
             border: 1px solid var(--border-glass);
-            border-radius: var(--radius-md);
-            padding: 0.5rem 0.75rem;
+            border-radius: var(--radius-full);
+            padding: 0.6rem 1rem;
             color: var(--text-primary);
-            font-size: 0.85rem;
+            font-size: 0.9rem;
         }
         .inbox-search input:focus { outline: none; border-color: var(--primary); }
-
+        .inbox-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+        
         .chat-item {
             display: flex;
             align-items: center;
@@ -76,365 +59,213 @@
             padding: 1rem;
             cursor: pointer;
             transition: background var(--transition-fast);
-            border-bottom: 1px solid var(--border-glass);
+            border-bottom: 1px solid var(--border-subtle);
         }
-        .chat-item:hover, .chat-item.active { background: var(--dark-2); }
-        .chat-item.unread .chat-preview { color: var(--text-primary); font-weight: 600; }
+        .chat-item:hover, .chat-item.active { background: var(--dark-1); }
+        .chat-item.unread { background: rgba(15, 157, 122, 0.05); }
+        
         .chat-avatar {
-            width: 44px;
-            height: 44px;
+            width: 45px;
+            height: 45px;
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
+            background: var(--dark-3);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 700;
+            font-weight: bold;
             font-size: 1rem;
-            color: white;
             flex-shrink: 0;
-            position: relative;
+            border: 1px solid var(--border-glass);
+            background-size: cover;
+            background-position: center;
         }
-        .chat-avatar .online-dot {
-            position: absolute;
-            bottom: 1px;
-            right: 1px;
-            width: 10px;
-            height: 10px;
-            background: var(--success);
-            border: 2px solid var(--dark-1);
-            border-radius: 50%;
-        }
-        .chat-info { flex: 1; min-width: 0; }
-        .chat-name { font-weight: 600; font-size: 0.9rem; }
-        .chat-preview { font-size: 0.78rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .chat-meta { text-align: right; font-size: 0.72rem; color: var(--text-muted); flex-shrink: 0; }
-        .unread-badge {
-            background: var(--primary);
-            color: white;
-            border-radius: var(--radius-full);
-            padding: 0.1rem 0.45rem;
-            font-size: 0.7rem;
-            font-weight: 700;
-        }
-
-        /* Notification items */
-        .notif-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 0.75rem;
-            padding: 1rem;
-            cursor: pointer;
-            transition: background var(--transition-fast);
-            border-bottom: 1px solid var(--border-glass);
-        }
-        .notif-item:hover { background: var(--dark-2); }
-        .notif-item.unread { background: rgba(249, 115, 22, 0.04); }
-        .notif-item.unread .notif-title { color: var(--text-primary); }
-        .notif-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: var(--radius-md);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            flex-shrink: 0;
-        }
-        .notif-title { font-size: 0.88rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.2rem; }
-        .notif-body { font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; }
-        .notif-time { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem; }
-
-        /* Chat Preview Panel */
-        .inbox-preview {
+        
+        /* Chat Main Area */
+        .chat-main {
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 220px);
+            background: var(--dark-1);
         }
         .chat-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-glass);
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            padding: 1rem 1.25rem;
-            border-bottom: 1px solid var(--border-glass);
-            background: var(--dark-1);
+            gap: 1rem;
+            background: var(--dark-2);
         }
+        .back-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        @media (max-width: 768px) {
+            .back-btn { display: block; }
+        }
+        
         .chat-messages {
             flex: 1;
+            padding: 1.5rem;
             overflow-y: auto;
-            padding: 1.25rem;
             display: flex;
             flex-direction: column;
-            gap: 0.75rem;
+            gap: 1rem;
         }
-
+        
         .message-bubble {
             max-width: 70%;
-            padding: 0.6rem 1rem;
-            border-radius: 16px;
-            font-size: 0.88rem;
-            line-height: 1.5;
+            padding: 0.8rem 1rem;
+            border-radius: 1rem;
+            font-size: 0.95rem;
+            line-height: 1.4;
             position: relative;
         }
-        .message-bubble.sent {
-            background: var(--primary);
-            color: white;
-            border-bottom-right-radius: 4px;
-            align-self: flex-end;
-        }
-        .message-bubble.received {
-            background: var(--dark-2);
-            color: var(--text-secondary);
-            border: 1px solid var(--border-glass);
-            border-bottom-left-radius: 4px;
+        .msg-received {
             align-self: flex-start;
-        }
-        .message-time { font-size: 0.68rem; opacity: 0.6; margin-top: 0.2rem; }
-        .message-row { display: flex; flex-direction: column; }
-        .message-row.sent { align-items: flex-end; }
-        .message-row.received { align-items: flex-start; }
-
-        .chat-input-bar {
-            padding: 0.75rem 1rem;
-            border-top: 1px solid var(--border-glass);
-            display: flex;
-            gap: 0.5rem;
-            background: var(--dark-1);
-        }
-        .chat-input {
-            flex: 1;
             background: var(--dark-2);
             border: 1px solid var(--border-glass);
-            border-radius: var(--radius-full);
-            padding: 0.6rem 1rem;
-            color: var(--text-primary);
-            font-size: 0.9rem;
-            transition: border-color var(--transition-fast);
+            border-bottom-left-radius: 0.2rem;
         }
-        .chat-input:focus { outline: none; border-color: var(--primary); }
-
-        .empty-state {
+        .msg-sent {
+            align-self: flex-end;
+            background: var(--primary);
+            color: var(--black);
+            font-weight: 500;
+            border-bottom-right-radius: 0.2rem;
+        }
+        .msg-time {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 0.3rem;
+            display: block;
+            text-align: right;
+        }
+        .msg-sent .msg-time {
+            color: rgba(0,0,0,0.6);
+        }
+        
+        .chat-input-area {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border-glass);
+            background: var(--dark-2);
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+        }
+        .chat-input-area textarea {
+            flex: 1;
+            background: var(--dark-1);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            padding: 0.8rem 1rem;
+            color: var(--text-primary);
+            font-family: inherit;
+            resize: none;
+            max-height: 120px;
+            min-height: 44px;
+        }
+        .chat-input-area textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        .chat-input-area button {
+            border-radius: var(--radius-full);
+            padding: 0 1.5rem;
+            height: 44px;
+        }
+        
+        .empty-chat {
+            flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100%;
             color: var(--text-muted);
             text-align: center;
-            padding: 2rem;
-        }
-        .empty-state .emoji { font-size: 3rem; margin-bottom: 1rem; }
-        .empty-state h4 { color: var(--text-secondary); margin-bottom: 0.5rem; }
-
-        /* Filter chips */
-        .filter-chips {
-            display: flex;
-            gap: 0.5rem;
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid var(--border-glass);
-            overflow-x: auto;
-        }
-        .filter-chip {
-            background: var(--dark-2);
-            border: 1px solid var(--border-glass);
-            border-radius: var(--radius-full);
-            padding: 0.3rem 0.75rem;
-            font-size: 0.78rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            cursor: pointer;
-            white-space: nowrap;
-            transition: all var(--transition-fast);
-        }
-        .filter-chip.active {
-            background: var(--primary-glow);
-            border-color: var(--primary);
-            color: var(--primary);
-        }
-
-        /* Typing indicator */
-        .typing-indicator {
-            display: flex;
-            gap: 3px;
-            align-items: center;
-            padding: 0.5rem 0.75rem;
-            background: var(--dark-2);
-            border-radius: 16px;
-            border-bottom-left-radius: 4px;
-            width: fit-content;
-        }
-        .typing-dot {
-            width: 6px;
-            height: 6px;
-            background: var(--text-muted);
-            border-radius: 50%;
-            animation: typing 1s infinite;
-        }
-        .typing-dot:nth-child(2) { animation-delay: 0.15s; }
-        .typing-dot:nth-child(3) { animation-delay: 0.3s; }
-        @keyframes typing {
-            0%, 60%, 100% { transform: translateY(0); }
-            30% { transform: translateY(-4px); }
         }
     </style>
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
 </head>
-<body>
-    <header class="app-header" id="main-header">
+<body class="page-fade-in">
+    <!-- Header -->
+    <header class="app-header">
         <div class="header-container container">
-            <div class="logo-section" onclick="window.location.href='home.html'">
-                <button class="back-btn" onclick="window.history.back(); event.stopPropagation();" style="background: none; border: none; font-size: 1.25rem; color: var(--text-primary); cursor: pointer; margin-right: 0.5rem;">←</button>
-                <div class="logo-icon" aria-hidden="true" style="color: var(--primary);">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 100%; height: 100%;">
-    <path d="m15 5 4 4" />
-    <path d="m11 9 4 4" />
-    <path d="m13 7-8 8" />
-    <path d="M9 11l-4 4" />
-    <path d="m13 13-7 7" />
-    <path d="M20 20H10" />
-</svg>
-                </div>
-                <div>
+            <div class="logo-section" onclick="window.location.href='home.html'" style="cursor: pointer;">
+                <div style="display: flex; align-items: center;">
+                    <div class="logo-icon" aria-hidden="true" style="color: var(--primary); width: 32px; height: 32px; margin-right: 0.5rem;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 100%; height: 100%;"><path d="m15 5 4 4" /><path d="m11 9 4 4" /><path d="m13 7-8 8" /><path d="M9 11l-4 4" /><path d="m13 13-7 7" /><path d="M20 20H10" /></svg>
+                    </div>
                     <h1 class="app-logo">FLEXY</h1>
-                    <p class="app-tagline">Where Collectors Meet</p>
                 </div>
             </div>
+            
             <div class="header-actions">
-    <button class="header-btn" onclick="window.location.href='home.html'">Home</button>
-    <button class="header-btn" onclick="window.location.href='explore.html'">Explore</button>
-    <button class="header-btn" onclick="window.location.href='communities.html'">Communities</button>
-    <button class="header-btn" onclick="window.location.href='collections.html'">Collections</button>
-    <button class="header-btn" onclick="window.location.href='auctions.html'">Auctions</button>
-    <button class="header-btn" onclick="window.location.href='messages.html'">Messages</button>
-<button class="header-btn" id="nav-notifications-btn" onclick="window.location.href='notifications.html'">Notifications <span class="notification-badge" id="nav-notification-badge" style="display: none; background: #EF4444; color: white; border-radius: 50%; padding: 0.15rem 0.4rem; font-size: 0.7rem; font-weight: bold; margin-left: 0.3rem;">0</span></button>
-    <button class="header-btn" onclick="window.location.href='wallet.html'">Wallet</button>
-    <button class="header-btn" onclick="window.location.href='profile.html'">Profile</button>
-</div>
-          </div>
-      </header>
-
-    <main class="main-container container" style="padding-top: 1.5rem; padding-bottom: 5rem;">
-        <div style="max-width: 1100px; margin: 0 auto;">
-            <!-- Page Header -->
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem;">
-                <div>
-                    <h2 style="font-size: 1.5rem; font-weight: 800;">Inbox</h2>
-                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.15rem;">Messages & Auction Notifications</p>
-                </div>
-                <button class="btn btn-outline" onclick="inbox.composeNew()" style="font-size: 0.85rem;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.4rem;"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
-                    New Message
-                </button>
+                <button class="header-btn" onclick="window.location.href='home.html'">Home</button>
+                <button class="header-btn" onclick="window.location.href='explore.html'">Explore</button>
+                <button class="header-btn" onclick="window.location.href='communities.html'">Communities</button>
+                <button class="header-btn" onclick="window.location.href='collections.html'">Collections</button>
+                <button class="header-btn" onclick="window.location.href='auctions.html'">Auctions</button>
+                <button class="header-btn active" onclick="window.location.href='messages.html'">Messages</button>
+                <button class="header-btn" id="nav-notifications-btn" onclick="window.location.href='notifications.html'">Notifications</button>
+                <button class="header-btn" onclick="window.location.href='wallet.html'">Wallet</button>
+                <button class="header-btn" onclick="window.location.href='profile.html'">Profile</button>
+                <button class="btn btn-primary" onclick="window.location.href='sell.html'" style="margin-left: 1rem; padding: 0.4rem 1.2rem; border-radius: var(--radius-full);">Sell Item</button>
             </div>
-
-            <!-- Inbox Layout -->
-            <div class="inbox-layout" id="inbox-layout">
-                <!-- Left Sidebar -->
-                <div class="inbox-list" id="inbox-list">
-                    <!-- Tab Switcher -->
-                    <div class="inbox-tabs">
-                        <div class="inbox-tab active" id="tab-dms" onclick="inbox.switchTab('dms')">
-                            Messages <span id="dm-unread-badge" style="display: none;" class="unread-badge">0</span>
-                        </div>
-                        <div class="inbox-tab" id="tab-notifs" onclick="inbox.switchTab('notifs')">
-                            Alerts <span id="notif-unread-badge" style="display: none;" class="unread-badge">0</span>
-                        </div>
-                    </div>
-
-                    <!-- DMs Content -->
-                    <div id="dms-content">
-                        <div class="inbox-search">
-                            <input type="text" id="search-input" placeholder="Search conversations..." oninput="inbox.searchChats(this.value)">
-                        </div>
-                        <div id="chats-list">
-                            <!-- Loaded by JS -->
-                        </div>
-                    </div>
-
-                    <!-- Notifications Content -->
-                    <div id="notifs-content" style="display: none;">
-                        <div class="filter-chips">
-                            <span class="filter-chip active" onclick="inbox.filterNotifs('all', this)">All</span>
-                            <span class="filter-chip" onclick="inbox.filterNotifs('bid', this)">Bids</span>
-                            <span class="filter-chip" onclick="inbox.filterNotifs('auction', this)">Auctions</span>
-                            <span class="filter-chip" onclick="inbox.filterNotifs('follow', this)">Followers</span>
-                        </div>
-                        <div id="notifs-list">
-                            <!-- Loaded by JS -->
-                        </div>
-                    </div>
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="main-container container">
+        <div class="inbox-layout animate-fade-up stagger-1" id="inbox-layout">
+            
+            <!-- Sidebar -->
+            <div class="inbox-sidebar">
+                <div class="inbox-search">
+                    <input type="text" id="conversation-search" placeholder="Search conversations...">
                 </div>
-
-                <!-- Right Chat/Preview Panel -->
-                <div class="inbox-preview" id="inbox-preview">
-                    <div class="empty-state" id="empty-state">
-                        <div class="emoji"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg></div>
-                        <h4>Select a conversation</h4>
-                        <p style="font-size: 0.85rem;">Choose a collector to start chatting, or check your auction alerts.</p>
-                    </div>
-
-                    <!-- Active Chat View -->
-                    <div id="active-chat" style="display: none; flex-direction: column; height: 100%;">
-                        <div class="chat-header" id="chat-header">
-                            <div class="chat-avatar" id="chat-peer-avatar">C</div>
-                            <div>
-                                <div style="font-weight: 700;" id="chat-peer-name">Collector</div>
-                                <div style="font-size: 0.75rem; color: var(--success);" id="chat-peer-status">Online</div>
-                            </div>
-                            <div style="margin-left: auto; display: flex; gap: 0.5rem;">
-                                <button class="btn btn-outline" style="padding: 0.4rem 0.75rem; font-size: 0.8rem;" onclick="inbox.viewProfile()">Profile</button>
-                                <button class="btn btn-outline" style="padding: 0.4rem 0.75rem; font-size: 0.8rem;" onclick="inbox.clearChat()">Clear</button>
-                            </div>
-                        </div>
-
-                        <div class="chat-messages" id="chat-messages"></div>
-
-                        <div id="typing-row" style="padding: 0 1.25rem 0.5rem; display: none;">
-                            <div class="typing-indicator">
-                                <div class="typing-dot"></div>
-                                <div class="typing-dot"></div>
-                                <div class="typing-dot"></div>
-                            </div>
-                        </div>
-
-                        <div class="chat-input-bar">
-                            <input class="chat-input" id="chat-input" placeholder="Write a message..." onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); inbox.sendMessage(); }">
-                            <button class="btn btn-primary" style="border-radius: var(--radius-full); width: 42px; height: 42px; padding: 0;" onclick="inbox.sendMessage()">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            </button>
-                        </div>
+                <div class="inbox-list" id="conversations-list">
+                    <div style="padding: 2rem; text-align: center; color: var(--text-muted);">
+                        <div class="loading-spinner" style="margin: 0 auto 1rem;"></div>
+                        Loading...
                     </div>
                 </div>
             </div>
+
+            <!-- Main Chat Window -->
+            <div class="chat-main" id="chat-main">
+                <div class="empty-chat" id="empty-chat-state">
+                    <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;">💬</div>
+                    <h3>Your Messages</h3>
+                    <p style="font-size: 0.9rem;">Select a conversation or start a new one to chat with fellow collectors.</p>
+                </div>
+
+                <div id="active-chat-state" style="display: none; height: 100%; flex-direction: column;">
+                    <div class="chat-header">
+                        <button class="back-btn" onclick="window.closeChat()">←</button>
+                        <div class="chat-avatar" id="active-chat-avatar">U</div>
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.1rem; font-family: var(--font-brand);" id="active-chat-name">User Name</h3>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-messages" id="chat-messages">
+                        <!-- Messages dynamically populated -->
+                    </div>
+
+                    <div class="chat-input-area">
+                        <textarea id="message-input" placeholder="Type a message..." rows="1"></textarea>
+                        <button class="btn btn-primary" onclick="window.sendMessage()">Send</button>
+                    </div>
+                </div>
+            </div>
+            
         </div>
     </main>
 
-    <!-- Bottom Nav -->
-    <nav class="bottom-nav">
-        <a href="home.html" class="nav-item">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9L12 2L21 9V20C21 20.5 20.78 21 20.41 21.41C20.04 21.79 19.53 22 19 22H5C4.47 22 3.59 21.41C3.21 21.04 3 20.5 3 20V9Z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span>Home</span>
-        </a>
-        <a href="search.html" class="nav-item">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35" stroke-linecap="round"/></svg>
-            <span>Explore</span>
-        </a>
-        <a href="sell.html" class="nav-item">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
-            <span>List</span>
-        </a>
-        <a href="inbox.html" class="nav-item active">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            <span>Inbox</span>
-        </a>
-        <a href="profile.html" class="nav-item">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            <span>Profile</span>
-        </a>
-    </nav>
-
-    <script src="/socket.io/socket.io.js"></script>
     <script src="js/notify.js"></script>
     <script src="js/api.js"></script>
-    <script src="js/inbox.js"></script>
+    <script src="js/messages.js"></script>
 </body>
 </html>

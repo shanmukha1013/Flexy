@@ -230,13 +230,13 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 window.likePost = async function(postId) {
-    if (!api.token) return alert('Please login to appreciate flexes.');
+    if (!api.token) return notify('Please login to appreciate flexes.', 'info');
     try {
         const user = JSON.parse(localStorage.getItem('flexy_user') || '{}');
         await api.post(`/posts/${postId}/like`, { userId: user._id });
         loadHomeFeed(); // simple re-render
     } catch (err) {
-        alert(err.message);
+        notify(err.message, 'error');
     }
 };
 
@@ -250,7 +250,7 @@ window.submitComment = async function(postId) {
     if (!input) return;
     const content = input.value.trim();
     if (!content) return;
-    if (!api.token) return alert('Please login to comment.');
+    if (!api.token) return notify('Please login to comment.', 'info');
     
     try {
         const user = JSON.parse(localStorage.getItem('flexy_user') || '{}');
@@ -267,7 +267,7 @@ window.submitComment = async function(postId) {
             await initCommunityPage();
         }
     } catch (err) {
-        alert(err.message);
+        notify(err.message, 'error');
     }
 };
 
@@ -307,7 +307,7 @@ function initHomeFeedActions() {
 
     submitBtn.addEventListener('click', async () => {
         const content = textInput.value.trim();
-        if (!content && !pendingImageBase64) return alert("Cannot flex nothing!");
+        if (!content && !pendingImageBase64) return notify("Cannot flex nothing!", 'info');
         
         submitBtn.innerText = "Flexing...";
         submitBtn.style.opacity = "0.7";
@@ -327,7 +327,7 @@ function initHomeFeedActions() {
             if (removeBtn) removeBtn.click();
             await loadHomeFeed();
         } catch(err) {
-            alert(err.message);
+            notify(err.message, 'error');
         } finally {
             submitBtn.innerText = "Flex";
             submitBtn.style.opacity = "1";
@@ -448,6 +448,7 @@ async function loadAuctions() {
     if (!container) return;
     try {
         container.innerHTML = `<div class="skeleton-card skeleton">
+
     <div class="skeleton-row">
         <div class="skeleton skeleton-avatar"></div>
         <div style="flex: 1;">
@@ -669,7 +670,7 @@ async function initGlobalProfile() {
                 }
             }
             // Update Navbar across all pages
-            const profileBtns = document.querySelectorAll('.header-actions button:last-child');
+            const profileBtns = document.querySelectorAll('.header-actions button[onclick*="profile.html"]');
             profileBtns.forEach(btn => {
                 btn.innerHTML = `
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
@@ -787,7 +788,7 @@ async function initSettingsPage() {
                 saveBtn.style.opacity = "1";
             }, 2000);
         } catch(err) {
-            alert("Error saving profile: " + err.message);
+            notify("Error saving profile: " + err.message, 'error');
             saveBtn.innerText = "Save Changes";
             saveBtn.style.opacity = "1";
         }
@@ -882,7 +883,7 @@ async function initProfilePage() {
         <div class="profile-header animate-fade-up stagger-1" style="display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: 3rem; padding-top: 2rem;">
             ${avatarHtml}
             <h1 style="font-family: var(--font-brand); margin-bottom: 0.25rem;">${user.displayName}</h1>
-            <p style="color: var(--text-muted); margin-bottom: 1rem; font-family: var(--font-brand);">@${user.username} · ${user.reputation}</p>
+            <p style="color: var(--text-muted); margin-bottom: 1rem; font-family: var(--font-brand);">@${user.username || 'unknown'} · ${user.reputation || 'New Collector'}</p>
             
             <p style="max-width: 500px; margin: 0.5rem auto 1.5rem auto; line-height: 1.6; color: var(--text-secondary); font-style: italic;">
                 ${user.bio || 'A dedicated curator and archivist, exploring rare acquisitions and documenting history on Flexy.'}
@@ -917,39 +918,42 @@ async function initProfilePage() {
                 ${actionButtons}
             </div>
         </div>
-        
-        <div class="tabs profile-header-tabs animate-fade-up stagger-2" style="border-bottom: 1px solid var(--border); margin-bottom: 2rem; display: flex; gap: 1.5rem;">
-            <button class="tab-trigger active" onclick="window.switchProfileTab('cabinet', '${user._id}')">Showcase Cabinet</button>
-            <button class="tab-trigger" onclick="window.switchProfileTab('flexes', '${user._id}')">Flexes</button>
+          <div class="tabs profile-header-tabs animate-fade-up stagger-2" style="border-bottom: 1px solid var(--border); margin-bottom: 2rem; display: flex; gap: 1.5rem; overflow-x: auto;">
+            <button class="tab-trigger active" onclick="window.switchProfileTab('overview', '${user._id}')">Overview</button>
+            <button class="tab-trigger" onclick="window.switchProfileTab('museum', '${user._id}')">Museum Preview</button>
+            <button class="tab-trigger" onclick="window.switchProfileTab('collections', '${user._id}')">Collections</button>
             <button class="tab-trigger" onclick="window.switchProfileTab('auctions', '${user._id}')">Auctions</button>
-            <button class="tab-trigger" onclick="window.switchProfileTab('communities', '${user._id}')">Communities</button>
             <button class="tab-trigger" onclick="window.switchProfileTab('groups', '${user._id}')">Groups</button>
+            <button class="tab-trigger" onclick="window.switchProfileTab('communities', '${user._id}')">Communities</button>
+            <button class="tab-trigger" onclick="window.switchProfileTab('followers', '${user._id}')">Followers</button>
+            <button class="tab-trigger" onclick="window.switchProfileTab('following', '${user._id}')">Following</button>
+            <button class="tab-trigger" onclick="window.switchProfileTab('activity', '${user._id}')">Activity</button>
         </div>
         
         <div class="museum-grid animate-fade-up stagger-3" id="showcase-cabinet"></div>
     `;
 
     // Load default tab
-    window.switchProfileTab('cabinet', user._id);
+    window.switchProfileTab('overview', user._id);
 }
 
 window.followUser = async function(id) {
-    if (!api.token) return alert('Please login to follow other collectors.');
+    if (!api.token) return notify('Please login to follow other collectors.', 'info');
     try {
         await api.post(`/users/${id}/follow`, {});
         initProfilePage();
     } catch(err) {
-        alert(err.message);
+        notify(err.message, 'error');
     }
 };
 
 window.unfollowUser = async function(id) {
-    if (!api.token) return alert('Please login to unfollow.');
+    if (!api.token) return notify('Please login to unfollow.', 'info');
     try {
         await api.post(`/users/${id}/unfollow`, {});
         initProfilePage();
     } catch(err) {
-        alert(err.message);
+        notify(err.message, 'error');
     }
 };
 
@@ -987,7 +991,8 @@ window.switchProfileTab = async function(tab, userId) {
                 grid.innerHTML = `
                     <div style="text-align: center; padding: 3rem; background: var(--dark-1); border-radius: var(--radius-xl); border: 1px solid var(--border-glass); grid-column: 1 / -1; width: 100%;">
                         <h3 style="font-family: var(--font-brand); color: var(--text-muted); margin-bottom: 1rem;">No museum items cataloged yet.</h3>
-                        ${isOwnProfile ? `<button class="btn btn-primary" style="border-radius: var(--radius-full);" onclick="window.location.href='sell.html'">Add Museum Item</button>` : ''}
+                        ${isOwnProfile ? `<button class="btn btn-primary" style="border-radius: var(--radius-full);" onclick="window.location.href='collections.html'">Create First Collection</button>` : ''}
+
                     </div>
                 `;
             }
@@ -1104,14 +1109,14 @@ window.settings.saveSetting = function(key, value) {
     console.log(`Setting saved: ${key} = ${value}`);
 };
 window.settings.changeEmail = function() {
-    alert("Please contact administration to request a change of registered email address.");
+    notify("Please contact administration to request a change of registered email address.", 'info');
 };
 window.settings.logoutAll = function() {
-    alert("Initiated security protocol: Logged out from all other active sessions.");
+    notify("Initiated security protocol: Logged out from all other active sessions.", 'info');
 };
 window.settings.deleteAccount = function() {
     if (confirm("Are you sure you want to permanently delete your collector legacy on Flexy? This action is irreversible.")) {
-        alert("Legacy deleted.");
+        notify("Legacy deleted.", 'info');
         localStorage.clear();
         window.location.href = "login.html";
     }
@@ -1268,7 +1273,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Community Actions
 window.createCommunity = async function() {
-    if (!api.token) return alert('Please login to create a community.');
+    if (!api.token) return notify('Please login to create a community.', 'info');
     const name = prompt('Community Name:');
     if (!name) return;
     const description = prompt('Community Description:');
@@ -1276,32 +1281,32 @@ window.createCommunity = async function() {
     try {
         const user = JSON.parse(localStorage.getItem('flexy_user') || '{}');
         await api.post('/communities', { name, description, icon: 'C', creatorId: user._id });
-        alert('Community created successfully!');
+        notify('Community created successfully!', 'success');
         if (typeof loadCommunities === 'function') loadCommunities();
     } catch(err) {
-        alert(err.message);
+        notify(err.message, 'error');
     }
 };
 
 window.joinCommunity = async function(id) {
-    if (!api.token) return alert('Please login to join a community.');
+    if (!api.token) return notify('Please login to join a community.', 'info');
     try {
         const user = JSON.parse(localStorage.getItem('flexy_user') || '{}');
         const res = await api.post('/communities/' + id + '/join', { userId: user._id });
         if (res.pending) {
-            alert('Request sent to creator successfully!');
+            notify('Request sent to creator successfully!', 'success');
         } else {
-            alert('Joined community successfully!');
+            notify('Joined community successfully!', 'success');
         }
         if (typeof loadCommunities === 'function') loadCommunities();
     } catch(err) {
-        alert(err.message);
+        notify(err.message, 'error');
     }
 };
 
 // Collection Actions
 window.createCollection = async function() {
-    if (!api.token) return alert('Please login to create a collection.');
+    if (!api.token) return notify('Please login to create a collection.', 'info');
     const title = prompt('Collection Title:');
     if (!title) return;
     const description = prompt('Collection Description:');
@@ -1310,10 +1315,10 @@ window.createCollection = async function() {
     try {
         const user = JSON.parse(localStorage.getItem('flexy_user') || '{}');
         await api.post('/collections', { title, description, category, ownerId: user._id });
-        alert('Collection created successfully!');
+        notify('Collection created successfully!', 'success');
         if (typeof loadCollections === 'function') loadCollections();
     } catch(err) {
-        alert(err.message);
+        notify(err.message, 'error');
     }
 };
 
@@ -1414,10 +1419,10 @@ async function initCommunityPage() {
                 joinBtn.onclick = async () => {
                     try {
                         await api.post(`/communities/${communityId}/join`, { userId: currentUser._id });
-                        alert("Admitted to community!");
+                        notify("Admitted to community!", 'info');
                         initCommunityPage();
                     } catch(err) {
-                        alert(err.message);
+                        notify(err.message, 'error');
                     }
                 };
                 if (postCard) postCard.style.display = 'none';
@@ -1546,7 +1551,7 @@ window.createCommunityPost = async function() {
     const textInput = document.getElementById('community-post-content');
     if (!textInput) return;
     const content = textInput.value.trim();
-    if (!content && !window.communityPendingImageBase64) return alert('Cannot post empty content.');
+    if (!content && !window.communityPendingImageBase64) return notify('Cannot post empty content.', 'info');
 
     const urlParams = new URLSearchParams(window.location.search);
     const communityId = urlParams.get('id');
@@ -1563,7 +1568,7 @@ window.createCommunityPost = async function() {
         window.clearCommunityPostImage();
         initCommunityPage(); // reload posts
     } catch(err) {
-        alert(err.message);
+        notify(err.message, 'error');
     }
 };
 
@@ -1573,7 +1578,7 @@ window.toggleGroupMembership = async function(groupId, isMember, communityId) {
         await api.post(`/groups/${groupId}/${action}`);
         initCommunityPage();
     } catch (err) {
-        alert(err.message || "Failed to update group membership");
+        notify(err.message || "Failed to update group membership", 'error');
     }
 };
 
@@ -1587,7 +1592,7 @@ window.triggerCreateGroup = async function() {
     const currentUser = JSON.parse(localStorage.getItem('flexy_user') || '{}');
     const isMember = community.members && community.members.some(m => (m._id || m) === currentUser._id);
     if (!isMember) {
-        alert("You must join this community before creating a sub-group.");
+        notify("You must join this community before creating a sub-group.", 'info');
         return;
     }
 
@@ -1598,10 +1603,10 @@ window.triggerCreateGroup = async function() {
 
     try {
         await api.post(`/communities/${communityId}/groups`, { name: name.trim(), description: description.trim() });
-        alert("Sub-group created successfully!");
+        notify("Sub-group created successfully!", 'success');
         initCommunityPage();
     } catch (err) {
-        alert(err.message || "Failed to create sub-group");
+        notify(err.message || "Failed to create sub-group", 'error');
     }
 };
 async function loadFollowSuggestions() {
@@ -1678,7 +1683,7 @@ window.followSuggestedUser = async function(userId) {
             loadHomeFeed();
         }
     } catch(err) {
-        alert(err.message);
+        notify(err.message, 'error');
     }
 };
 

@@ -12,8 +12,7 @@ const GroupSchema = new mongoose.Schema({
     },
     community: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Community',
-        required: true
+        ref: 'Community'
     },
     members: [{
         type: mongoose.Schema.Types.ObjectId,

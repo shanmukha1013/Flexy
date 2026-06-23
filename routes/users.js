@@ -187,4 +187,38 @@ router.post('/:id/unfollow', auth, async (req, res) => {
     }
 });
 
+// Add Item to Showcase Cabinet
+router.post('/:id/cabinet', auth, async (req, res) => {
+    if (req.user.userId !== req.params.id) return res.status(403).json({ error: 'Unauthorized' });
+    try {
+        const { title, description, image, category, year, condition, isForSale, price } = req.body;
+        
+        const Item = require('../models/Item');
+        const item = new Item({
+            title,
+            description,
+            image,
+            owner: req.params.id,
+            category,
+            year,
+            condition,
+            isForSale: isForSale || false,
+            price: price || 0
+        });
+        await item.save();
+
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        
+        user.showcaseCabinet.push(item._id);
+        await user.save();
+
+        res.json({ message: 'Item added to showcase cabinet successfully', item });
+    } catch (error) {
+        console.error('Error adding showcase item:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 module.exports = router;
+

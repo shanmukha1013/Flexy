@@ -6,6 +6,27 @@
     <title>Auctions | FLEXY Collectors</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <style>
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-subtle);
+            padding-bottom: 0.5rem;
+        }
+        .section-header h3 {
+            font-family: var(--font-brand);
+            font-size: 1.5rem;
+            color: var(--text-primary);
+        }
+        .auctions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 4rem;
+        }
+    </style>
 </head>
 <body class="page-fade-in">
     <!-- Header -->
@@ -15,13 +36,8 @@
                 <div style="display: flex; align-items: center;">
                     <div class="logo-icon" aria-hidden="true" style="color: var(--primary); width: 32px; height: 32px; margin-right: 0.5rem;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 100%; height: 100%;">
-    <path d="m15 5 4 4" />
-    <path d="m11 9 4 4" />
-    <path d="m13 7-8 8" />
-    <path d="M9 11l-4 4" />
-    <path d="m13 13-7 7" />
-    <path d="M20 20H10" />
-</svg>
+                        <path d="m15 5 4 4" /><path d="m11 9 4 4" /><path d="m13 7-8 8" /><path d="M9 11l-4 4" /><path d="m13 13-7 7" /><path d="M20 20H10" />
+                    </svg>
                 </div>
                     <h1 class="app-logo">FLEXY</h1>
                 </div>
@@ -34,28 +50,55 @@
                 <button class="header-btn" onclick="window.location.href='collections.html'">Collections</button>
                 <button class="header-btn active" onclick="window.location.href='auctions.html'">Auctions</button>
                 <button class="header-btn" onclick="window.location.href='messages.html'">Messages</button>
-<button class="header-btn" id="nav-notifications-btn" onclick="window.location.href='notifications.html'">Notifications <span class="notification-badge" id="nav-notification-badge" style="display: none; background: #EF4444; color: white; border-radius: 50%; padding: 0.15rem 0.4rem; font-size: 0.7rem; font-weight: bold; margin-left: 0.3rem;">0</span></button>
+                <button class="header-btn" id="nav-notifications-btn" onclick="window.location.href='notifications.html'">Notifications</button>
                 <button class="header-btn" onclick="window.location.href='wallet.html'">Wallet</button>
                 <button class="header-btn" onclick="window.location.href='profile.html'">Profile</button>
+                <button class="btn btn-primary" onclick="window.location.href='sell.html'" style="margin-left: 1rem; border-radius: var(--radius-full); padding: 0.4rem 1.2rem; font-weight: 600;">Sell Item</button>
             </div>
         </div>
     </header>
     
     <!-- Main Content -->
     <main class="main-container container">
-        <section style="margin-top: 3rem; text-align: center; border-bottom: 1px solid var(--border-glass); padding-bottom: 3rem;">
+
+        <!-- Premium Sell CTA -->
+        <div class="glass-card animate-fade-up stagger-1" style="background: linear-gradient(135deg, rgba(15, 157, 122, 0.1) 0%, rgba(15, 157, 122, 0.02) 100%); border: 1px solid var(--primary); margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: center; padding: 2.5rem; border-radius: var(--radius-lg);">
+            <div>
+                <h2 style="font-family: var(--font-brand); font-size: 2rem; margin: 0 0 0.5rem 0; color: var(--text-primary);">Start Selling Today</h2>
+                <p style="color: var(--text-secondary); margin: 0; font-size: 1.1rem; max-width: 600px;">List your rare collectibles in front of a global audience of passionate collectors. Setup takes less than 2 minutes.</p>
+            </div>
+            <button class="btn btn-primary" onclick="window.location.href='sell.html'" style="padding: 1rem 2rem; font-size: 1.1rem; border-radius: var(--radius-full); box-shadow: 0 0 20px var(--primary-glow-thick); font-weight: 700; white-space: nowrap;">+ Create Auction</button>
+        </div>
+
+        <section style="margin-top: 3rem; text-align: center; border-bottom: 1px solid var(--border-glass); padding-bottom: 3rem; margin-bottom: 3rem;">
             <h2 class="display-title animate-fade-up stagger-1">Live Auctions</h2>
-            <p class="animate-fade-up stagger-2" style="color: var(--text-secondary); max-width: 600px; margin: 1rem auto;">Bid on rare and verified pieces directly from verified collectors within your communities.</p>
+            <p class="animate-fade-up stagger-2" style="color: var(--text-secondary); max-width: 600px; margin: 1rem auto;">Bid on rare and verified pieces directly from trusted collectors.</p>
         </section>
 
-        <section class="animate-fade-up stagger-3" style="margin-top: 4rem; margin-bottom: 4rem;">
-            <div id="auctions-feed-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 2rem;">
-                <div class="skeleton-card skeleton" style="height: 400px;"></div>
-                <div class="skeleton-card skeleton" style="height: 400px;"></div>
-                <div class="skeleton-card skeleton" style="height: 400px;"></div>
+        <section class="animate-fade-up stagger-3" id="watchlist-section" style="display: none;">
+            <div class="section-header">
+                <h3>⭐ My Watchlist</h3>
             </div>
+            <div id="watchlist-feed" class="auctions-grid"></div>
         </section>
+
+        <section class="animate-fade-up stagger-4">
+            <div class="section-header">
+                <h3>🔥 Ending Soon</h3>
+            </div>
+            <div id="ending-soon-feed" class="auctions-grid"></div>
+        </section>
+
+        <section class="animate-fade-up stagger-5">
+            <div class="section-header">
+                <h3>🟢 All Active Auctions</h3>
+            </div>
+            <div id="all-auctions-feed" class="auctions-grid"></div>
+        </section>
+
     </main>
+    <script src="js/notify.js"></script>
     <script src="js/api.js"></script>
+    <script src="js/auctions.js"></script>
 </body>
 </html>

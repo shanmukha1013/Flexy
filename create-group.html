@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FLEXY | Create Group</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body class="page-fade-in">
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-container container">
+            <div class="logo-section" onclick="window.location.href='home.html'" style="cursor: pointer;">
+                <div style="display: flex; align-items: center;">
+                    <div class="logo-icon" aria-hidden="true" style="color: var(--primary); width: 32px; height: 32px; margin-right: 0.5rem;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 100%; height: 100%;"><path d="m15 5 4 4" /><path d="m11 9 4 4" /><path d="m13 7-8 8" /><path d="M9 11l-4 4" /><path d="m13 13-7 7" /><path d="M20 20H10" /></svg>
+                    </div>
+                    <h1 class="app-logo">FLEXY</h1>
+                </div>
+            </div>
+            
+            <div class="header-actions">
+                <button class="header-btn" onclick="window.location.href='home.html'">Home</button>
+                <button class="header-btn" onclick="window.location.href='explore.html'">Explore</button>
+                <button class="header-btn active" onclick="window.location.href='communities.html'">Communities</button>
+                <button class="header-btn" onclick="window.location.href='collections.html'">Collections</button>
+                <button class="header-btn" onclick="window.location.href='auctions.html'">Auctions</button>
+                <button class="header-btn" onclick="window.location.href='messages.html'">Messages</button>
+                <button class="header-btn" id="nav-notifications-btn" onclick="window.location.href='notifications.html'">Notifications</button>
+                <button class="header-btn" onclick="window.location.href='wallet.html'">Wallet</button>
+                <button class="header-btn" onclick="window.location.href='profile.html'">Profile</button>
+                <button class="btn btn-primary" onclick="window.location.href='sell.html'" style="margin-left: 1rem; border-radius: var(--radius-full); padding: 0.4rem 1.2rem;">Sell Item</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-container container" style="max-width: 600px; padding-top: 4rem;">
+        <div class="glass-card animate-fade-up stagger-1" style="padding: 2.5rem;">
+            <h2 style="font-family: var(--font-brand); margin-bottom: 0.5rem;">Create a Group</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">A group is a dedicated space for specific discussions. Later, you can combine groups to form a larger Community.</p>
+            
+            <form id="create-group-form">
+                <div class="form-group">
+                    <label>Group Name <span class="required">*</span></label>
+                    <input type="text" id="group-name" placeholder="e.g., Roman Coin Enthusiasts" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Description <span class="required">*</span></label>
+                    <textarea id="group-desc" rows="4" placeholder="What is this group about?" required></textarea>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; margin-top: 2rem;">
+                    <button type="button" class="btn btn-outline" style="margin-right: 1rem;" onclick="window.history.back()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btn-submit">Create Group</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script src="js/notify.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+        document.getElementById('create-group-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-submit');
+            btn.disabled = true;
+            btn.textContent = 'Creating...';
+
+            try {
+                const name = document.getElementById('group-name').value;
+                const description = document.getElementById('group-desc').value;
+
+                await api.post('/groups', { name, description });
+                notify('Group created successfully!', 'success');
+                setTimeout(() => {
+                    window.location.href = 'create-community.html';
+                }, 1500);
+            } catch (err) {
+                notify(err.message, 'error');
+                btn.disabled = false;
+                btn.textContent = 'Create Group';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,259 +1,194 @@
 // js/notifications.js
-// Handles Notification Center logic for FLEXY
 
-document.addEventListener("DOMContentLoaded", () => {
-    // 1. Check Auth
-    auth.checkAuth();
-    
-    // 2. Load User Profile Sidebar
-    loadSidebarProfile();
-    
-    // 3. Load Notifications List
-    loadNotificationsList();
-
-    // 4. Hook up Mark All as Read button
-    const markAllBtn = document.getElementById('mark-all-read-btn');
-    if (markAllBtn) {
-        markAllBtn.addEventListener('click', markAllNotificationsAsRead);
-    }
-});
-
-function loadSidebarProfile() {
-    const user = auth.getUser();
-    if (!user) return;
-
-    // Set text elements
-    const displayNameEl = document.getElementById('sidebar-displayname');
-    const usernameEl = document.getElementById('sidebar-username');
-    const reputationEl = document.getElementById('sidebar-reputation');
-    const avatarEl = document.getElementById('sidebar-avatar');
-
-    if (displayNameEl) displayNameEl.innerText = user.displayName || user.username;
-    if (usernameEl) usernameEl.innerText = `@${user.username}`;
-    if (reputationEl) reputationEl.innerText = `Reputation: ${user.reputation || 'Elite Collector'}`;
-
-    if (avatarEl) {
-        if (user.avatarUrl || user.profilePhoto) {
-            avatarEl.style.backgroundImage = `url('${user.avatarUrl || user.profilePhoto}')`;
-            avatarEl.style.backgroundSize = 'cover';
-            avatarEl.style.backgroundPosition = 'center';
-            avatarEl.innerText = '';
-        } else {
-            avatarEl.innerText = user.avatarInitials || (user.displayName || user.username).substring(0, 2).toUpperCase();
-        }
-    }
-
-    // Load Joined Communities for Sidebar
-    loadSidebarCommunities();
-}
-
-async function loadSidebarCommunities() {
-    const listEl = document.getElementById('sidebar-communities-list');
-    if (!listEl) return;
-
-    try {
-        const me = await api.get('/auth/me');
-        const communities = me.communities || [];
-
-        if (communities.length === 0) {
-            listEl.innerHTML = '<p style="font-size: 0.85rem; color: var(--text-muted);">No joined communities yet.</p>';
-            return;
-        }
-
-        let html = '';
-        communities.forEach(c => {
-            html += `
-            <a href="community.html?id=${c._id}" style="text-decoration: none; color: var(--text-primary); display: flex; align-items: center; gap: 0.8rem;">
-                <span style="font-size: 1.2rem;">👥</span>
-                <span style="font-weight: 600; font-size: 0.9rem;">${c.name}</span>
-            </a>`;
-        });
-        listEl.innerHTML = html;
-    } catch (err) {
-        console.error("Error loading sidebar communities:", err);
-    }
-}
-
-async function loadNotificationsList() {
-    const container = document.getElementById('notifications-list-container');
-    if (!container) return;
-
-    try {
-        const notifications = await api.get('/notifications');
+class NotificationsApp {
+    constructor() {
+        this.currentUser = JSON.parse(localStorage.getItem('flexy_user') || 'null');
+        this.notifications = [];
+        this.currentTab = 'all';
         
-        if (notifications.length === 0) {
-            container.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-icon">🔔</div>
-                <h3>All Caught Up</h3>
-                <p style="margin-top: 0.5rem; font-size: 0.9rem;">You have no notifications at this time.</p>
-            </div>`;
+        this.init();
+    }
+
+    async init() {
+        if (!this.currentUser) {
+            window.location.href = 'login.html';
+            return;
+        }
+        window.notifApp = this;
+        await this.loadNotifications();
+        this.setupListeners();
+    }
+
+    setupListeners() {
+        const markAllBtn = document.getElementById('mark-all-read-btn');
+        if (markAllBtn) {
+            markAllBtn.addEventListener('click', () => this.markAllAsRead());
+        }
+    }
+
+    async loadNotifications() {
+        try {
+            this.notifications = await api.get('/notifications');
+            this.updateBadges();
+            this.renderFeed();
+        } catch (err) {
+            console.error(err);
+            document.getElementById('notifications-feed').innerHTML = `<div style="color: var(--danger); text-align: center; padding: 2rem;">Failed to load notifications.</div>`;
+        }
+    }
+
+    updateBadges() {
+        const unreadCount = this.notifications.filter(n => !n.read).length;
+        const allBadge = document.getElementById('badge-all');
+        const unreadBadge = document.getElementById('badge-unread');
+        
+        if (this.notifications.length > 0) {
+            allBadge.textContent = this.notifications.length;
+            allBadge.classList.add('active');
+        } else {
+            allBadge.classList.remove('active');
+        }
+
+        if (unreadCount > 0) {
+            unreadBadge.textContent = unreadCount;
+            unreadBadge.classList.add('active');
+        } else {
+            unreadBadge.classList.remove('active');
+        }
+    }
+
+    switchTab(tab) {
+        this.currentTab = tab;
+        
+        // Update sidebar UI
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            if (btn.dataset.tab === tab) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        this.renderFeed();
+    }
+
+    getFilteredNotifications() {
+        switch(this.currentTab) {
+            case 'unread':
+                return this.notifications.filter(n => !n.read);
+            case 'auctions':
+                return this.notifications.filter(n => ['bid', 'outbid', 'auction_won', 'auction_ended'].includes(n.type));
+            case 'communities':
+                return this.notifications.filter(n => ['community_request', 'community_approved', 'community_rejected', 'group_invite'].includes(n.type));
+            case 'collections':
+                return this.notifications.filter(n => ['comment', 'like', 'collection_update'].includes(n.type));
+            case 'system':
+                return this.notifications.filter(n => ['system', 'alert'].includes(n.type));
+            case 'all':
+            default:
+                return this.notifications;
+        }
+    }
+
+    getIconForType(type) {
+        const icons = {
+            bid: '💰',
+            outbid: '⚠️',
+            auction_won: '🎉',
+            auction_ended: '⏳',
+            community_request: '👥',
+            community_approved: '✅',
+            like: '🤍',
+            comment: '💬',
+            system: '⚙️'
+        };
+        return icons[type] || '🔔';
+    }
+
+    async markAsRead(id) {
+        try {
+            await api.put(`/notifications/${id}/read`);
+            const notif = this.notifications.find(n => n._id === id);
+            if (notif) notif.read = true;
+            this.updateBadges();
+            this.renderFeed();
+        } catch (err) {
+            console.error("Error marking read", err);
+        }
+    }
+
+    async markAllAsRead() {
+        try {
+            await api.put('/notifications/read-all');
+            this.notifications.forEach(n => n.read = true);
+            this.updateBadges();
+            this.renderFeed();
+            notify('All notifications marked as read', 'success');
+        } catch (err) {
+            notify('Failed to mark all as read', 'error');
+        }
+    }
+
+    renderCard(n) {
+        const icon = this.getIconForType(n.type);
+        const timeStr = new Date(n.createdAt).toLocaleString();
+        
+        let actionBtn = '';
+        if (!n.read) {
+            actionBtn = `<button class="btn btn-primary" style="padding: 0.3rem 0.8rem; font-size: 0.8rem; border-radius: var(--radius-sm);" onclick="notifApp.markAsRead('${n._id}')">Mark Read</button>`;
+        }
+
+        let linkUrl = '#';
+        if (n.itemModel === 'Auction' && n.relatedItem) linkUrl = `item.html?id=${typeof n.relatedItem === 'object' ? n.relatedItem._id : n.relatedItem}`;
+        if (n.itemModel === 'Community' && n.relatedItem) linkUrl = `community.html?id=${typeof n.relatedItem === 'object' ? n.relatedItem._id : n.relatedItem}`;
+
+        return `
+            <div class="notification-card ${!n.read ? 'unread' : ''}">
+                <div class="sender-avatar">${icon}</div>
+                <div class="notification-content">
+                    <h4 class="notification-title">${n.title}</h4>
+                    <p class="notification-msg">${n.message}</p>
+                    <div class="notification-meta">
+                        <span class="notification-time">${timeStr}</span>
+                        <div style="display: flex; gap: 0.5rem;">
+                            ${actionBtn}
+                            ${linkUrl !== '#' ? `<button class="btn btn-outline" style="padding: 0.3rem 0.8rem; font-size: 0.8rem; border-radius: var(--radius-sm);" onclick="window.location.href='${linkUrl}'">View</button>` : ''}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    renderFeed() {
+        const feed = document.getElementById('notifications-feed');
+        const filtered = this.getFilteredNotifications();
+
+        if (filtered.length === 0) {
+            let stateTitle = "All Caught Up";
+            let stateMsg = "You have no notifications in this category.";
+            if (this.currentTab === 'unread') {
+                stateTitle = "No Unread Notifications";
+                stateMsg = "You've read everything!";
+            } else if (this.currentTab === 'all') {
+                stateTitle = "It's Quiet Here";
+                stateMsg = "Your notification center is completely empty.";
+            }
+
+            feed.innerHTML = `
+                <div class="empty-state">
+                    <div style="font-size: 4rem; opacity: 0.5; margin-bottom: 1rem;">📭</div>
+                    <h3 style="font-family: var(--font-brand); color: var(--text-primary); margin: 0 0 0.5rem 0; font-size: 1.5rem;">${stateTitle}</h3>
+                    <p style="color: var(--text-secondary); margin: 0;">${stateMsg}</p>
+                </div>
+            `;
             return;
         }
 
-        let html = '';
-        notifications.forEach(n => {
-            const isUnread = !n.read;
-            const timeStr = formatRelativeTime(new Date(n.createdAt));
-            const icon = getNotificationIcon(n.type);
-
-            let actionHtml = '';
-            // Render inline Approve/Reject buttons for community requests
-            if (n.type === 'community_request' && n.relatedItem) {
-                actionHtml = `
-                <div class="action-buttons" id="actions-${n._id}">
-                    <button class="btn btn-primary" style="padding: 0.35rem 0.85rem; font-size: 0.8rem; border-radius: var(--radius-sm);" onclick="handleCommunityRequest('${n._id}', '${n.relatedItem}', '${n.sender._id}', 'approve')">Approve</button>
-                    <button class="btn btn-outline" style="padding: 0.35rem 0.85rem; font-size: 0.8rem; border-radius: var(--radius-sm); color: var(--danger); border-color: var(--danger);" onclick="handleCommunityRequest('${n._id}', '${n.relatedItem}', '${n.sender._id}', 'reject')">Reject</button>
-                </div>`;
-            }
-
-            // Click handler: Mark as read and redirect based on type
-            const redirectUrl = getRedirectUrl(n);
-            const clickAttr = redirectUrl ? `style="cursor: pointer;" onclick="handleNotificationClick('${n._id}', '${redirectUrl}', event)"` : '';
-
-            html += `
-            <div class="notification-card ${isUnread ? 'unread' : ''}" id="notif-${n._id}" ${clickAttr}>
-                <div class="notification-icon">${icon}</div>
-                <div class="notification-content">
-                    <div class="notification-title">${n.title}</div>
-                    <div class="notification-msg">${n.message}</div>
-                    <div class="notification-time">${timeStr}</div>
-                    ${actionHtml}
-                </div>
-            </div>`;
-        });
-
-        container.innerHTML = html;
-
-    } catch (err) {
-        console.error("Error loading notifications:", err);
-        container.innerHTML = `
-        <div style="text-align: center; padding: 3rem; color: var(--danger);">
-            <h3>Failed to load notifications</h3>
-            <p style="margin-top: 1rem; font-size: 0.9rem;">${err.message}</p>
-        </div>`;
+        feed.innerHTML = filtered.map(n => this.renderCard(n)).join('');
     }
 }
 
-function getNotificationIcon(type) {
-    switch (type) {
-        case 'like': return '❤️';
-        case 'comment': return '💬';
-        case 'bid': return '⚖️';
-        case 'outbid': return '⚠️';
-        case 'auction_won': return '🏆';
-        case 'auction_ended': return '🏁';
-        case 'follow': return '👤';
-        case 'community_request': return '👥';
-        case 'community_approved': return '✅';
-        case 'community_rejected': return '❌';
-        default: return '🔔';
-    }
-}
-
-function getRedirectUrl(n) {
-    if (n.type === 'community_request') return null; // handled inline
-    
-    if (n.itemModel === 'Post' && n.relatedItem) {
-        // Redirect to community page containing the post if possible
-        // Note: Community page fetches posts for that community. 
-        // We will just redirect to communities.html or let it slide
-        return 'communities.html';
-    } else if (n.itemModel === 'Auction' && n.relatedItem) {
-        return `item.html?id=${n.relatedItem}`;
-    } else if (n.itemModel === 'User' && n.relatedItem) {
-        return `profile.html?id=${n.relatedItem}`;
-    } else if (n.itemModel === 'Community' && n.relatedItem) {
-        return `community.html?id=${n.relatedItem}`;
-    }
-    return null;
-}
-
-async function handleNotificationClick(notificationId, redirectUrl, event) {
-    // If user clicked inside action-buttons, don't trigger outer click
-    if (event.target.closest('.action-buttons')) return;
-
-    try {
-        // Mark as read
-        await api.put(`/notifications/${notificationId}/read`);
-    } catch (err) {
-        console.error("Failed to mark notification as read:", err);
-    }
-
-    if (redirectUrl) {
-        window.location.href = redirectUrl;
-    } else {
-        // Just reload to update unread indicator
-        loadNotificationsList();
-        if (typeof updateNotificationBadge === 'function') {
-            updateNotificationBadge();
-        }
-    }
-}
-
-async function handleCommunityRequest(notificationId, communityId, userId, action) {
-    const actionsContainer = document.getElementById(`actions-${notificationId}`);
-    if (actionsContainer) {
-        actionsContainer.innerHTML = '<div class="loading-spinner" style="width: 20px; height: 20px;"></div> Processing...';
-    }
-
-    try {
-        // 1. Call Community Approve/Reject API
-        await api.post(`/communities/${communityId}/requests/${userId}/${action}`);
-
-        // 2. Mark this notification as read
-        await api.put(`/notifications/${notificationId}/read`);
-
-        // 3. Update UI
-        if (actionsContainer) {
-            if (action === 'approve') {
-                actionsContainer.innerHTML = '<span style="color: var(--primary); font-weight: 600;">Approved ✅</span>';
-            } else {
-                actionsContainer.innerHTML = '<span style="color: var(--text-muted); font-weight: 600;">Rejected ❌</span>';
-            }
-        }
-
-        // Remove unread class from card
-        const card = document.getElementById(`notif-${notificationId}`);
-        if (card) {
-            card.classList.remove('unread');
-        }
-
-        // Update badge
-        if (typeof updateNotificationBadge === 'function') {
-            updateNotificationBadge();
-        }
-
-    } catch (err) {
-        alert(err.message);
-        loadNotificationsList(); // Restore original UI state
-    }
-}
-
-async function markAllNotificationsAsRead() {
-    try {
-        await api.post('/notifications/mark-all-read');
-        notify('All notifications marked as read', 'success');
-        loadNotificationsList();
-        if (typeof updateNotificationBadge === 'function') {
-            updateNotificationBadge();
-        }
-    } catch (err) {
-        notify(err.message, 'error');
-    }
-}
-
-function formatRelativeTime(date) {
-    const now = new Date();
-    const diffMs = now - date;
-    const diffSec = Math.floor(diffMs / 1000);
-    const diffMin = Math.floor(diffSec / 60);
-    const diffHr = Math.floor(diffMin / 60);
-    const diffDay = Math.floor(diffHr / 24);
-
-    if (diffSec < 60) return "Just now";
-    if (diffMin < 60) return `${diffMin}m ago`;
-    if (diffHr < 24) return `${diffHr}h ago`;
-    if (diffDay === 1) return "Yesterday";
-    return date.toLocaleDateString();
-}
+document.addEventListener('DOMContentLoaded', () => {
+    new NotificationsApp();
+});

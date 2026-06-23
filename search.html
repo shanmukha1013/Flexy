@@ -3,16 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FLEXY - Search Auctions</title>
+    <title>Search | FLEXY Collectors</title>
     <link rel="stylesheet" href="css/style.css">
-    <script src="js/loader.js"></script>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <style>
-        /* Search page specific styling */
         .search-results-section {
             display: grid;
             grid-template-columns: 280px 1fr;
             gap: 2.5rem;
             align-items: start;
+            margin-top: 2rem;
+            margin-bottom: 4rem;
         }
         @media(max-width:992px) {
             .search-results-section {
@@ -56,7 +57,7 @@
             color: var(--text-secondary);
             margin-bottom: 1rem;
         }
-        .filter-checkbox, .filter-radio {
+        .filter-radio {
             display: flex;
             align-items: center;
             gap: 0.5rem;
@@ -66,18 +67,18 @@
             color: var(--text-secondary);
             transition: color var(--transition-fast);
         }
-        .filter-checkbox:hover, .filter-radio:hover {
+        .filter-radio:hover {
             color: var(--text-primary);
         }
         
-        /* Search layout input */
         .search-header-container {
             display: flex;
             background: var(--dark-2);
             border: 1px solid var(--border-glass);
             border-radius: var(--radius-full);
             width: 100%;
-            max-width: 480px;
+            max-width: 600px;
+            margin: 0 auto;
             align-items: center;
             padding: 0 1rem;
             position: relative;
@@ -85,251 +86,118 @@
         .search-header-container input {
             border: none !important;
             background: transparent !important;
-            padding: 0.65rem 0.5rem;
+            padding: 0.8rem 0.5rem;
             color: var(--text-primary);
             flex: 1;
-            font-size: 0.95rem;
+            font-size: 1rem;
         }
         .search-header-container input:focus {
             outline: none;
             box-shadow: none !important;
         }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 1.5rem;
+        }
     </style>
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
 </head>
-<body>
+<body class="page-fade-in">
     <!-- Header -->
     <header class="app-header">
         <div class="header-container container">
-            <div class="logo-section" onclick="window.location.href='home.html'">
-                <div class="logo-icon" aria-hidden="true" style="color: var(--primary);">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 100%; height: 100%;">
-    <path d="m15 5 4 4" />
-    <path d="m11 9 4 4" />
-    <path d="m13 7-8 8" />
-    <path d="M9 11l-4 4" />
-    <path d="m13 13-7 7" />
-    <path d="M20 20H10" />
-</svg>
-                </div>
-                <div>
+            <div class="logo-section" onclick="window.location.href='home.html'" style="cursor: pointer;">
+                <div style="display: flex; align-items: center;">
+                    <div class="logo-icon" aria-hidden="true" style="color: var(--primary); width: 32px; height: 32px; margin-right: 0.5rem;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 100%; height: 100%;"><path d="m15 5 4 4" /><path d="m11 9 4 4" /><path d="m13 7-8 8" /><path d="M9 11l-4 4" /><path d="m13 13-7 7" /><path d="M20 20H10" /></svg>
+                    </div>
                     <h1 class="app-logo">FLEXY</h1>
-                    <p class="app-tagline">Every Item Finds Its Value</p>
                 </div>
-            </div>
-            
-            <!-- Custom Search bar inside Header -->
-            <div class="search-header-container">
-                <span><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></span>
-                <input type="text" id="search-input" placeholder="Search for items, categories..." autofocus>
-                <button id="clear-search" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.1rem; line-height:1;">×</button>
             </div>
             
             <div class="header-actions">
-    <button class="header-btn" onclick="window.location.href='home.html'">Home</button>
-    <button class="header-btn" onclick="window.location.href='explore.html'">Explore</button>
-    <button class="header-btn" onclick="window.location.href='communities.html'">Communities</button>
-    <button class="header-btn" onclick="window.location.href='collections.html'">Collections</button>
-    <button class="header-btn" onclick="window.location.href='auctions.html'">Auctions</button>
-    <button class="header-btn" onclick="window.location.href='messages.html'">Messages</button>
-<button class="header-btn" id="nav-notifications-btn" onclick="window.location.href='notifications.html'">Notifications <span class="notification-badge" id="nav-notification-badge" style="display: none; background: #EF4444; color: white; border-radius: 50%; padding: 0.15rem 0.4rem; font-size: 0.7rem; font-weight: bold; margin-left: 0.3rem;">0</span></button>
-    <button class="header-btn" onclick="window.location.href='wallet.html'">Wallet</button>
-    <button class="header-btn" onclick="window.location.href='profile.html'">Profile</button>
-</div>
-          </div>
-      </header>
+                <button class="header-btn" onclick="window.location.href='home.html'">Home</button>
+                <button class="header-btn" onclick="window.location.href='explore.html'">Explore</button>
+                <button class="header-btn" onclick="window.location.href='communities.html'">Communities</button>
+                <button class="header-btn" onclick="window.location.href='collections.html'">Collections</button>
+                <button class="header-btn" onclick="window.location.href='auctions.html'">Auctions</button>
+                <button class="header-btn" onclick="window.location.href='messages.html'">Messages</button>
+                <button class="header-btn" id="nav-notifications-btn" onclick="window.location.href='notifications.html'">Notifications</button>
+                <button class="header-btn" onclick="window.location.href='wallet.html'">Wallet</button>
+                <button class="header-btn" onclick="window.location.href='profile.html'">Profile</button>
+                <button class="btn btn-primary" onclick="window.location.href='sell.html'" style="margin-left: 1rem; padding: 0.4rem 1.2rem; border-radius: var(--radius-full);">Sell Item</button>
+            </div>
+        </div>
+    </header>
     
     <!-- Main Content -->
-    <main class="main-container container" style="padding-top: 2.5rem; padding-bottom: 4rem;">
-        <div class="search-results-section">
-            <!-- Left Filters Panel -->
-            <div class="filters-panel glass-card" id="filters-panel">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <h3 style="font-size: 1.25rem;">Filters</h3>
-                    <button class="btn-ghost" onclick="toggleFilters()" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; font-weight: 600; border-radius: var(--radius-sm);">Close ×</button>
-                </div>
-                
+    <main class="main-container container">
+        
+        <section style="margin-top: 3rem; text-align: center;">
+            <div class="search-header-container animate-fade-up stagger-1">
+                <span style="color: var(--text-muted); font-size: 1.2rem;">🔍</span>
+                <input type="text" id="global-search-input" placeholder="Search auctions, collections, or communities...">
+                <button class="btn btn-primary" onclick="search.performSearch()" style="border-radius: var(--radius-full); padding: 0.4rem 1.2rem;">Search</button>
+            </div>
+        </section>
+
+        <div class="search-results-section animate-fade-up stagger-2">
+            <!-- Sidebar Filters -->
+            <aside class="filters-panel" id="filters-panel">
                 <div class="filter-section">
-                    <h4>Price Range</h4>
-                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                        <div style="display: flex; gap: 0.5rem; align-items: center;">
-                            <input type="number" id="min-price" placeholder="Min" style="background: var(--dark-2); border-color: var(--border-glass); padding: 0.4rem 0.75rem; font-size: 0.85rem; border-radius: var(--radius-sm); width: 80px; text-align: center;">
-                            <span style="color: var(--text-muted); font-size: 0.8rem;">to</span>
-                            <input type="number" id="max-price" placeholder="Max" style="background: var(--dark-2); border-color: var(--border-glass); padding: 0.4rem 0.75rem; font-size: 0.85rem; border-radius: var(--radius-sm); width: 80px; text-align: center;">
-                        </div>
-                    </div>
+                    <h4>Search In</h4>
+                    <label class="filter-radio">
+                        <input type="radio" name="scope" value="auctions" checked>
+                        <span>Live Auctions</span>
+                    </label>
+                    <label class="filter-radio">
+                        <input type="radio" name="scope" value="collections">
+                        <span>Museum Collections</span>
+                    </label>
+                    <label class="filter-radio">
+                        <input type="radio" name="scope" value="communities">
+                        <span>Communities</span>
+                    </label>
                 </div>
-                
+
                 <div class="filter-section">
                     <h4>Category</h4>
-                    <div class="category-filters">
-                        <label class="filter-checkbox">
-                            <input type="checkbox" value="electronics">
-                            <span>Electronics</span>
-                        </label>
-                        <label class="filter-checkbox">
-                            <input type="checkbox" value="fashion">
-                            <span>Fashion</span>
-                        </label>
-                        <label class="filter-checkbox">
-                            <input type="checkbox" value="home">
-                            <span>Home</span>
-                        </label>
-                        <label class="filter-checkbox">
-                            <input type="checkbox" value="garden">
-                            <span>Garden</span>
-                        </label>
-                        <label class="filter-checkbox">
-                            <input type="checkbox" value="gaming">
-                            <span>Gaming</span>
-                        </label>
-                        <label class="filter-checkbox">
-                            <input type="checkbox" value="collectibles">
-                            <span>Collectibles</span>
-                        </label>
-                        <label class="filter-checkbox">
-                            <input type="checkbox" value="art">
-                            <span>Art</span>
-                        </label>
-                        <label class="filter-checkbox">
-                            <input type="checkbox" value="vehicles">
-                            <span>Vehicles</span>
-                        </label>
-                    </div>
+                    <select id="filter-category" style="width: 100%; background: var(--dark-2); border-color: var(--border-glass);">
+                        <option value="all">All Categories</option>
+                        <option value="electronics">Electronics</option>
+                        <option value="fashion">Fashion</option>
+                        <option value="collectibles">Collectibles</option>
+                        <option value="art">Art</option>
+                        <option value="watches">Watches & Jewelry</option>
+                        <option value="vehicles">Vehicles</option>
+                        <option value="antiquities">Antiquities</option>
+                    </select>
                 </div>
                 
-                <div class="filter-section">
-                    <h4>Condition</h4>
-                    <div class="condition-filters">
-                        <label class="filter-radio">
-                            <input type="radio" name="condition" value="all" checked>
-                            <span>All Conditions</span>
-                        </label>
-                        <label class="filter-radio">
-                            <input type="radio" name="condition" value="new">
-                            <span>New</span>
-                        </label>
-                        <label class="filter-radio">
-                            <input type="radio" name="condition" value="used">
-                            <span>Used</span>
-                        </label>
-                    </div>
+                <button class="btn btn-outline btn-block" onclick="search.clearFilters()">Clear Filters</button>
+            </aside>
+
+            <!-- Results -->
+            <div class="results-main">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h2 style="font-family: var(--font-brand); font-size: 1.5rem; margin: 0;">Results <span id="results-count" style="color: var(--text-muted); font-size: 1rem; font-weight: normal;">(0)</span></h2>
                 </div>
-                
-                <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
-                    <button class="btn btn-outline btn-block" style="padding: 0.5rem; font-size: 0.85rem;" onclick="clearFilters()">Reset</button>
-                    <button class="btn btn-primary btn-block" style="padding: 0.5rem; font-size: 0.85rem;" onclick="applyFilters()">Apply</button>
+
+                <div id="loading-state" style="display: none; text-align: center; padding: 4rem 0;">
+                    <div class="loading-spinner" style="margin: 0 auto 1rem;"></div>
+                    <p style="color: var(--text-secondary);">Searching...</p>
+                </div>
+
+                <div id="results-grid" class="grid-container">
+                    <!-- Populated by JS -->
                 </div>
             </div>
-            
-            <!-- Right Search Results Grid -->
-            <section class="search-results" style="width: 100%;">
-                <div class="explore-tabs" style="display: flex; gap: 0.5rem; border-bottom: 1px solid var(--border-glass); margin-bottom: 1.5rem; overflow-x: auto; padding-bottom: 0.5rem; scrollbar-width: none;">
-                    <button class="explore-tab active" onclick="search.switchScope('auctions')" style="background: none; border: none; padding: 0.5rem 1rem; font-weight: 600; color: var(--text-primary); cursor: pointer; border-bottom: 2px solid var(--primary); transition: all var(--transition-fast); white-space: nowrap;"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg> Auctions</button>
-                    <button class="explore-tab" onclick="search.switchScope('collections')" style="background: none; border: none; padding: 0.5rem 1rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; transition: all var(--transition-fast); white-space: nowrap;">📂 Collections</button>
-                    <button class="explore-tab" onclick="search.switchScope('collectors')" style="background: none; border: none; padding: 0.5rem 1rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; transition: all var(--transition-fast); white-space: nowrap;"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg> Collectors</button>
-                    <button class="explore-tab" onclick="search.switchScope('communities')" style="background: none; border: none; padding: 0.5rem 1rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; transition: all var(--transition-fast); white-space: nowrap;"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> Communities</button>
-                </div>
-                
-                <div class="results-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 1rem;">
-                    <h3 id="results-count" style="font-size: 1.35rem;">Search Results</h3>
-                    <div style="display: flex; gap: 1rem; align-items: center;">
-                        <button class="btn btn-outline" onclick="toggleFilters()" style="padding: 0.4rem 0.85rem; font-size: 0.85rem; display: none;" id="mobile-filter-trigger">Filter <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
-                        <select id="sort-by" style="background: var(--dark-2); border-color: var(--border-glass); padding: 0.4rem 0.85rem; font-size: 0.85rem; color: var(--text-primary); border-radius: var(--radius-sm); font-family: inherit; font-weight: 600;" onchange="sortResults()">
-                            <option value="relevance">Relevance</option>
-                            <option value="price-low">Price: Low to High</option>
-                            <option value="price-high">Price: High to Low</option>
-                            <option value="newest">Newest First</option>
-                            <option value="ending">Ending Soon</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="items-grid" id="search-results">
-                    <!-- Results loaded by JavaScript -->
-                </div>
-                
-                <div class="no-results" id="no-results" style="display: none; padding: 5rem 2rem; text-align: center;">
-                    <div class="empty-state">
-                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" style="margin-bottom: 1rem;">
-                            <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" 
-                                  stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                        <h4 style="font-size: 1.25rem;">No items found</h4>
-                        <p style="color: var(--text-secondary); margin-top: 0.25rem;">Try adjusting your keywords or filters.</p>
-                        <button class="btn btn-outline" style="margin-top: 1.5rem;" onclick="clearFilters()">Reset Filters</button>
-                    </div>
-                </div>
-                
-                <div class="loading" id="search-loading" style="display: none; text-align: center; padding: 4rem;">
-                    <div class="loading-spinner" style="margin: 0 auto 1rem;"></div>
-                    <p style="color: var(--text-secondary); font-size: 0.95rem;">Loading auction items...</p>
-                </div>
-            </section>
         </div>
+
     </main>
-    
-    <!-- Bottom Navigation for Mobile -->
-    <nav class="bottom-nav">
-        <a href="home.html" class="nav-item">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" 
-                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <span>Home</span>
-        </a>
-        <a href="search.html" class="nav-item active">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" 
-                      stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-            <span>Auctions</span>
-        </a>
-        <a href="sell.html" class="nav-item">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-            <span>Sell</span>
-        </a>
-        <a href="dashboard.html" class="nav-item">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="3" width="7" height="9" rx="1" stroke="currentColor" stroke-width="2"/>
-                <rect x="14" y="3" width="7" height="5" rx="1" stroke="currentColor" stroke-width="2"/>
-                <rect x="14" y="12" width="7" height="9" rx="1" stroke="currentColor" stroke-width="2"/>
-                <rect x="3" y="16" width="7" height="5" rx="1" stroke="currentColor" stroke-width="2"/>
-            </svg>
-            <span>Dashboard</span>
-        </a>
-        <a href="wallet.html" class="nav-item">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" 
-                      stroke="currentColor" stroke-width="2"/>
-                <path d="M15 8H9V16H15V8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-            </svg>
-            <span>Wallet</span>
-        </a>
-    </nav>
-    
+
     <script src="js/notify.js"></script>
-    <script src="js/search.js"></script>
-    <script src="js/auth.js"></script>
-    <script>
-        // Toggle filter panel on mobile views
-        function toggleFilters() {
-            const panel = document.getElementById('filters-panel');
-            if (panel) panel.classList.toggle('active');
-        }
-        
-        // Handle responsive display of filters button
-        function checkViewport() {
-            const trigger = document.getElementById('mobile-filter-trigger');
-            if (trigger) {
-                trigger.style.display = window.innerWidth <= 992 ? 'inline-block' : 'none';
-            }
-        }
-        window.addEventListener('resize', checkViewport);
-        document.addEventListener('DOMContentLoaded', checkViewport);
-    </script>
     <script src="js/api.js"></script>
+    <script src="js/search.js"></script>
 </body>
 </html>
