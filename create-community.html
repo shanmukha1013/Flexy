@@ -3,87 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FLEXY | Create Community</title>
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <style>
-        .step-indicator {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 3rem;
-            position: relative;
-        }
-        .step-indicator::before {
-            content: '';
-            position: absolute;
-            top: 20px;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: var(--border-subtle);
-            z-index: 1;
-        }
-        .step {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            position: relative;
-            z-index: 5;
-        }
-        .step-number {
-            width: 42px;
-            height: 42px;
-            border-radius: var(--radius-full);
-            background: var(--dark-2);
-            border: 2px solid var(--border-glass);
-            color: var(--text-secondary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-        }
-        .step.active .step-number {
-            background: var(--primary);
-            border-color: var(--primary);
-            color: var(--black);
-        }
-        .step.completed .step-number {
-            background: var(--primary);
-            border-color: var(--primary);
-            color: var(--black);
-        }
-        .step-label {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            margin-top: 0.5rem;
-            text-transform: uppercase;
-        }
-        .step.active .step-label { color: var(--text-primary); }
-        
-        .form-step { display: none; }
-        .form-step.active { display: block; animation: fade 0.3s; }
-        @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
-
-        .group-select-card {
-            background: var(--dark-2);
-            border: 1px solid var(--border-glass);
-            padding: 1rem;
-            border-radius: var(--radius-md);
-            margin-bottom: 1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            transition: all var(--transition-fast);
-        }
-        .group-select-card:hover { border-color: var(--primary); }
-        .group-select-card.selected {
-            background: rgba(15, 157, 122, 0.1);
-            border-color: var(--primary);
-        }
-    </style>
+    <title>Flexy - Create Community</title>
+    <link rel="stylesheet" href="css/index.css">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 <body class="page-fade-in">
     <!-- Header -->
@@ -102,81 +24,80 @@
         </div>
     </header>
 
-    <main class="main-container container" style="max-width: 700px; padding-top: 4rem;">
-        <div class="glass-card animate-fade-up stagger-1" style="padding: 2.5rem;">
+    <main class="main-container container" style="max-width: 600px; padding-top: 4rem;">
+        <div class="glass-card animate-fade-up" style="padding: 2.5rem;">
+            <h2 style="font-family: var(--font-brand); margin-bottom: 0.5rem;">Create a Community</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">A community is an umbrella that holds specialized groups. Create the community first, then you can add specific groups inside it.</p>
             
-            <div class="step-indicator">
-                <div class="step active" id="step-1-indicator">
-                    <div class="step-number">1</div>
-                    <div class="step-label">Basic Info</div>
-                </div>
-                <div class="step" id="step-2-indicator">
-                    <div class="step-number">2</div>
-                    <div class="step-label">Select Groups</div>
-                </div>
-                <div class="step" id="step-3-indicator">
-                    <div class="step-number">3</div>
-                    <div class="step-label">Review</div>
-                </div>
+            <div class="form-group">
+                <label>Community Name</label>
+                <input type="text" id="comm-name" placeholder="e.g., Global Numismatics Hub" required>
             </div>
-
-            <!-- STEP 1 -->
-            <div class="form-step active" id="step-1">
-                <h2 style="font-family: var(--font-brand);">Community Details</h2>
-                <p style="color: var(--text-secondary); margin-bottom: 2rem;">A community is an umbrella that holds multiple groups together.</p>
-                
-                <div class="form-group">
-                    <label>Community Name</label>
-                    <input type="text" id="comm-name" placeholder="e.g., Global Numismatics Hub" required>
-                </div>
-                <div class="form-group">
-                    <label>Description</label>
-                    <textarea id="comm-desc" rows="3" required></textarea>
-                </div>
-                <div class="form-group">
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="comm-desc" rows="4" placeholder="What is this community about?" required></textarea>
+            </div>
+            <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+                <div class="form-group" style="flex: 1;">
                     <label>Emoji Icon</label>
                     <input type="text" id="comm-icon" placeholder="🏛️" value="🏛️">
                 </div>
-            </div>
-
-            <!-- STEP 2 -->
-            <div class="form-step" id="step-2">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <div>
-                        <h2 style="font-family: var(--font-brand); margin: 0;">Add Groups</h2>
-                        <p style="color: var(--text-secondary); margin: 0;">Select groups to include. You must add at least one group.</p>
-                    </div>
-                    <button class="btn btn-outline" onclick="window.location.href='create-group.html'">+ New Group</button>
-                </div>
-                
-                <div id="groups-list">
-                    <div style="text-align: center; padding: 2rem;">Loading your groups...</div>
+                <div class="form-group" style="flex: 2;">
+                    <label>Privacy</label>
+                    <select id="comm-privacy" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--border-glass); background: var(--dark-1); color: var(--text-primary);">
+                        <option value="public">Public (Anyone can join)</option>
+                        <option value="private">Private (Invite / Request only)</option>
+                    </select>
                 </div>
             </div>
 
-            <!-- STEP 3 -->
-            <div class="form-step" id="step-3">
-                <h2 style="font-family: var(--font-brand);">Review Community</h2>
-                <div style="background: var(--dark-2); padding: 1.5rem; border-radius: var(--radius-md); margin-top: 1.5rem;">
-                    <div style="font-size: 3rem; margin-bottom: 1rem;" id="review-icon">🏛️</div>
-                    <h3 id="review-name" style="margin: 0 0 0.5rem 0;">Name</h3>
-                    <p id="review-desc" style="color: var(--text-secondary);"></p>
-                    <div style="margin-top: 1rem; color: var(--primary); font-weight: 600;" id="review-groups-count">0 Groups Selected</div>
-                </div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+                <button class="btn btn-outline" onclick="window.location.href='communities.html'">Cancel</button>
+                <button class="btn btn-primary" id="create-btn" onclick="createCommunity()">Create Community</button>
             </div>
-
-            <div style="display: flex; justify-content: space-between; margin-top: 3rem; border-top: 1px solid var(--border-glass); padding-top: 1.5rem;">
-                <button class="btn btn-outline" id="btn-back" style="display: none;" onclick="ccApp.prevStep()">Back</button>
-                <div style="flex:1;"></div>
-                <button class="btn btn-primary" id="btn-next" onclick="ccApp.nextStep()">Next Step</button>
-                <button class="btn btn-primary" id="btn-submit" style="display: none;" onclick="ccApp.submit()">Create Community</button>
-            </div>
-            
         </div>
     </main>
 
-    <script src="js/notify.js"></script>
+    <div id="toast-container"></div>
     <script src="js/api.js"></script>
-    <script src="js/create-community.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = localStorage.getItem('flexy_user');
+            if (!user) window.location.href = 'login.html';
+        });
+
+        async function createCommunity() {
+            const name = document.getElementById('comm-name').value.trim();
+            const desc = document.getElementById('comm-desc').value.trim();
+            const icon = document.getElementById('comm-icon').value.trim() || '🏛️';
+            const privacy = document.getElementById('comm-privacy').value;
+
+            if (!name || !desc) {
+                notify('Name and Description are required.', 'warning');
+                return;
+            }
+
+            const btn = document.getElementById('create-btn');
+            btn.disabled = true;
+            btn.innerText = 'Creating...';
+
+            try {
+                const res = await api.post('/communities', {
+                    name,
+                    description: desc,
+                    icon,
+                    privacy
+                });
+                notify('Community created! Redirecting...', 'success');
+                setTimeout(() => {
+                    window.location.href = `community.html?id=${res._id}`;
+                }, 1500);
+            } catch (err) {
+                notify(err.message, 'error');
+                btn.disabled = false;
+                btn.innerText = 'Create Community';
+            }
+        }
+    </script>
 </body>
 </html>

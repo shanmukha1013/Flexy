@@ -2,21 +2,34 @@ const express = require('express');
 const router = express.Router();
 const Post = require('../models/Post');
 
+const Group = require('../models/Group');
+
 // Get Feed
 router.get('/', async (req, res) => {
     try {
         const query = {};
-        if (req.query.community) {
-            query.community = req.query.community;
+        if (req.query.group) {
+            query.group = req.query.group;
+        } else if (req.query.community) {
+            const groups = await Group.find({ community: req.query.community });
+            const groupIds = groups.map(g => g._id);
+            // Fetch posts belonging to the community directly OR its groups
+            query.$or = [
+                { community: req.query.community },
+                { group: { $in: groupIds } }
+            ];
         }
+        
         const posts = await Post.find(query)
             .populate('author', 'username displayName avatarInitials avatarUrl')
+            .populate('group', 'name')
             .populate('community', 'name')
             .populate('linkedCollection', 'title')
             .populate('comments.author', 'username displayName avatarInitials avatarUrl')
             .sort({ createdAt: -1 });
         res.json(posts);
     } catch (error) {
+        console.error(error);
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -24,12 +37,17 @@ router.get('/', async (req, res) => {
 // Create Post
 router.post('/', async (req, res) => {
     try {
-        const { content, authorId, communityId, groupId, image, collectionId } = req.body;
+        const { content, authorId, groupId, communityId, image, collectionId } = req.body;
+        
+        if (!groupId && !communityId) {
+            return res.status(400).json({ error: 'Posts must belong to a group or community' });
+        }
+        
         const post = new Post({
             content,
             author: authorId,
-            community: communityId,
-            group: groupId,
+            group: groupId || undefined,
+            community: communityId || undefined,
             image,
             linkedCollection: collectionId
         });

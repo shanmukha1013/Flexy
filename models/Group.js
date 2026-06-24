@@ -14,10 +14,15 @@ const GroupSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Community'
     },
-    members: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
-    }],
+    memberCount: {
+        type: Number,
+        default: 0
+    },
+    privacy: {
+        type: String,
+        enum: ['public', 'private'],
+        default: 'public'
+    },
     creator: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

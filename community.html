@@ -106,7 +106,10 @@
                     </div>
                     <p id="community-desc" style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5; margin: 0;">Community description goes here.</p>
                     
-                    <!-- Join Community button removed (WhatsApp style: join via groups) -->
+                    <div style="margin: 1rem 0;">
+                        <button id="community-join-btn" class="btn btn-primary" style="padding: 0.5rem 2rem; border-radius: var(--radius-full);">Join Community</button>
+                    </div>
+                    
                     <div style="width: 100%; border-top: 1px solid var(--border-glass); padding-top: 1rem; text-align: left;">
                         <h4 style="font-family: var(--font-brand); font-size: 0.95rem; margin-bottom: 0.5rem; letter-spacing: 0.5px; display: flex; justify-content: space-between;">
                             Members <span id="member-count" style="color: var(--primary);">0</span>
@@ -123,7 +126,10 @@
                 <div class="glass-card" style="padding: 1.5rem; margin-bottom: 2rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                         <h3 style="font-family: var(--font-brand); margin: 0;">Sub-Groups</h3>
-                        <button class="btn btn-outline" id="create-group-btn" style="padding: 0.3rem 0.8rem; font-size: 0.8rem; border-radius: var(--radius-sm);" onclick="window.createGroup()">+ Create Group</button>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-outline" style="padding: 0.3rem 0.8rem; font-size: 0.8rem; border-radius: var(--radius-sm);" onclick="window.linkExistingGroup()">+ Add Existing Group</button>
+                            <button class="btn btn-outline" id="create-group-btn" style="padding: 0.3rem 0.8rem; font-size: 0.8rem; border-radius: var(--radius-sm);" onclick="window.createGroup()">+ Create New</button>
+                        </div>
                     </div>
                     <div id="community-groups-list">
                         <!-- Populated by JS -->
@@ -136,7 +142,10 @@
                     
                     <!-- Post input -->
                     <div id="post-input-area" style="display: none; background: var(--dark-2); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-glass); margin-bottom: 2rem;">
-                        <textarea id="new-post-content" rows="3" placeholder="Share an update, ask a question, or discuss an item..." style="width: 100%; background: transparent; border: none; color: var(--text-primary); resize: none; margin-bottom: 1rem; font-family: inherit; font-size: 0.9rem; outline: none;"></textarea>
+                        <div style="display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1rem;">
+                            <div id="new-post-avatar" class="avatar-circle" style="width: 40px; height: 40px; background: var(--primary);"></div>
+                            <textarea id="new-post-content" rows="3" placeholder="Share an update, ask a question, or discuss an item..." style="flex: 1; background: transparent; border: none; color: var(--text-primary); resize: none; font-family: inherit; font-size: 0.9rem; outline: none;"></textarea>
+                        </div>
                         <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-glass); padding-top: 0.5rem;">
                             <span style="font-size: 0.8rem; color: var(--text-muted);">Post to this community</span>
                             <button class="btn btn-primary" onclick="window.submitPost()" style="padding: 0.3rem 1.5rem; border-radius: var(--radius-full);">Post</button>
@@ -178,7 +187,24 @@
             </form>
         </div>
     </div>
+    <div id="link-group-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 1000; overflow-y: auto; padding: 2rem;">
+        <div class="modal-content glass-card" style="max-width: 500px; margin: 0 auto; position: relative; padding: 2rem;">
+            <button class="close-modal" onclick="document.getElementById('link-group-modal').style.display='none'" style="position: absolute; top: 15px; right: 20px; background: none; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer;">×</button>
+            <h2 style="font-family: var(--font-brand); margin-bottom: 1.5rem;">Add Existing Group</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">Select one of your standalone groups to link to this community.</p>
+            <div id="link-group-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 300px; overflow-y: auto;">
+                <!-- Populated by JS -->
+            </div>
+            <button class="btn btn-primary btn-block" style="margin-top: 1.5rem;" onclick="window.submitLinkGroup()">Link Group</button>
+        </div>
+    </div>
 
+    <div id="loading-state" style="text-align: center; padding: 5rem 0; color: var(--text-muted); font-size: 1.1rem;">
+        Loading community...
+    </div>
+
+    <div id="toast-container"></div>
+    
     <script src="js/notify.js"></script>
     <script src="js/api.js"></script>
     <script src="js/community.js"></script>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Group | FLEXY</title>
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/community.css">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="page-fade-in">
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-container container">
+            <div class="logo-section" onclick="window.location.href='home.html'" style="cursor: pointer;">
+                <div style="display: flex; align-items: center;">
+                    <div class="logo-icon" aria-hidden="true" style="color: var(--primary); width: 32px; height: 32px; margin-right: 0.5rem;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 100%; height: 100%;">
+                        <path d="m15 5 4 4" /><path d="m11 9 4 4" /><path d="m13 7-8 8" /><path d="M9 11l-4 4" /><path d="m13 13-7 7" /><path d="M20 20H10" />
+                    </svg>
+                </div>
+                    <h1 class="app-logo">FLEXY</h1>
+                </div>
+            </div>
+            
+            <div class="header-actions">
+                <button class="header-btn" onclick="window.location.href='home.html'">Home</button>
+                <button class="header-btn" onclick="window.location.href='explore.html'">Explore</button>
+                <button class="header-btn active" onclick="window.location.href='communities.html'">Communities</button>
+                <button class="header-btn" onclick="window.location.href='profile.html'">Profile</button>
+                <button class="btn btn-primary" onclick="window.location.href='sell.html'" style="margin-left: 1rem; padding: 0.4rem 1.2rem; border-radius: var(--radius-full);">Sell Item</button>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="main-container container" id="group-page-container" style="display: none;">
+        <div class="community-layout">
+            <!-- Sidebar Details -->
+            <div class="community-sidebar animate-fade-up stagger-1">
+                <div class="glass-card" style="padding: 1.5rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+                    <div id="group-icon" style="font-size: 3.5rem; background: var(--dark-2); border-radius: 50%; width: 100px; height: 100px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-glass);">👥</div>
+                    <div>
+                        <h2 id="group-title" style="font-family: var(--font-brand); font-size: 1.50rem; margin-bottom: 0.5rem;">Group Title</h2>
+                        <p id="group-community" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500; cursor: pointer;" onclick="if(window.parentCommunityId) window.location.href='community.html?id='+window.parentCommunityId">Belongs to <span style="color: var(--primary);">Community Name</span></p>
+                    </div>
+                    <p id="group-desc" style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5; margin: 0;">Group description goes here.</p>
+                    
+                    <div style="margin: 1rem 0;">
+                        <button id="group-join-btn" class="btn btn-primary" style="padding: 0.5rem 2rem; border-radius: var(--radius-full);">Join Group</button>
+                    </div>
+                    
+                    <div style="width: 100%; border-top: 1px solid var(--border-glass); padding-top: 1rem; text-align: left;">
+                        <h4 style="font-family: var(--font-brand); font-size: 0.95rem; margin-bottom: 0.5rem; letter-spacing: 0.5px; display: flex; justify-content: space-between;">
+                            Members <span id="member-count" style="color: var(--primary);">0</span>
+                        </h4>
+                        <div id="group-members-list" class="member-avatar-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Feed -->
+            <div class="community-main animate-fade-up stagger-2">
+                <div class="glass-card" style="padding: 1.5rem;">
+                    <h3 style="font-family: var(--font-brand); margin: 0 0 1.5rem 0;">Group Discussions</h3>
+                    
+                    <!-- Post input -->
+                    <div id="post-input-area" style="display: none; background: var(--dark-2); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-glass); margin-bottom: 2rem;">
+                        <div style="display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1rem;">
+                            <div id="new-post-avatar" class="avatar-circle" style="width: 40px; height: 40px; background: var(--primary);"></div>
+                            <textarea id="new-post-content" rows="3" placeholder="Share an update, ask a question, or discuss an item..." style="flex: 1; background: transparent; border: none; color: var(--text-primary); resize: none; font-family: inherit; font-size: 0.9rem; outline: none;"></textarea>
+                        </div>
+                        <div id="image-preview-container" style="display: none; margin-bottom: 1rem; position: relative;">
+                            <img id="post-image-preview" src="" style="max-width: 100%; border-radius: var(--radius-md); border: 1px solid var(--border-glass);">
+                            <button class="btn btn-icon" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.5);" onclick="clearPostImage()">✕</button>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-glass); padding-top: 0.5rem;">
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-outline" style="padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem;" onclick="document.getElementById('post-image-upload').click()">📷 Photo</button>
+                                <input type="file" id="post-image-upload" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+                            </div>
+                            <button class="btn btn-primary" id="btn-submit-post" onclick="window.submitPost()" style="padding: 0.3rem 1.5rem; border-radius: var(--radius-full);">Post</button>
+                        </div>
+                    </div>
+
+                    <div id="group-feed">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="loading-state" style="text-align: center; padding: 5rem 0; color: var(--text-muted); font-size: 1.1rem;">
+        Loading group...
+    </div>
+
+    <div id="toast-container"></div>
+    
+    <script src="js/notify.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/group.js"></script>
+    
+    <script>
+        let postImageDataUrl = null;
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                postImageDataUrl = e.target.result;
+                document.getElementById('post-image-preview').src = postImageDataUrl;
+                document.getElementById('image-preview-container').style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+        function clearPostImage() {
+            postImageDataUrl = null;
+            document.getElementById('post-image-upload').value = '';
+            document.getElementById('image-preview-container').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

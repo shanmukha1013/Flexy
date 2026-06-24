@@ -43,8 +43,12 @@ class HomeHub {
 
         const initial = this.currentUser.avatarInitials || (this.currentUser.displayName ? this.currentUser.displayName.charAt(0).toUpperCase() : 'U');
         
+        const avatarStyle = this.currentUser.avatarUrl 
+            ? `background-image: url('${this.currentUser.avatarUrl}'); background-size: cover; background-position: center; color: transparent;` 
+            : '';
+        
         container.innerHTML = `
-            <div class="avatar-circle" style="width: 50px; height: 50px; background: var(--primary);">${initial}</div>
+            <div class="avatar-circle" style="width: 50px; height: 50px; background: var(--primary); ${avatarStyle}">${this.currentUser.avatarUrl ? '' : initial}</div>
             <div>
                 <div style="font-weight: 700; font-family: var(--font-brand);">${this.currentUser.displayName || 'Collector'}</div>
                 <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.2rem;">@${this.currentUser.username || 'user'}</div>
@@ -80,7 +84,7 @@ class HomeHub {
             }
 
             container.innerHTML = data.slice(0, 4).map(c => `
-                <a href="communities.html?id=${c._id}" style="text-decoration: none; color: var(--text-primary); display: flex; align-items: center; gap: 0.8rem;">
+                <a href="community.html?id=${c._id}" style="text-decoration: none; color: var(--text-primary); display: flex; align-items: center; gap: 0.8rem;">
                     <span style="font-size: 1.2rem; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; background: var(--dark-1); color: var(--primary);">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                     </span>

@@ -86,13 +86,16 @@
     <!-- Main Content -->
     <main class="main-container container">
         <section style="margin-top: 3rem; text-align: center; border-bottom: 1px solid var(--border-glass); padding-bottom: 3rem; margin-bottom: 3rem;">
-            <h2 class="display-title animate-fade-up stagger-1">Collector Communities</h2>
-            <p class="animate-fade-up stagger-2" style="color: var(--text-secondary); max-width: 600px; margin: 1rem auto;">Join high-level communities, participate in specialized sub-groups, and connect with verified collectors worldwide.</p>
+            <h2 class="display-title animate-fade-up stagger-1">Communities & Groups</h2>
+            <p class="animate-fade-up stagger-2" style="color: var(--text-secondary); max-width: 600px; margin: 1rem auto;">Join high-level communities, participate in specialized groups, and connect with verified collectors worldwide.</p>
             
             <div class="animate-fade-up stagger-3" style="margin-top: 2rem;">
-                <div style="max-width: 500px; margin: 0 auto; position: relative;">
+                <div style="max-width: 500px; margin: 0 auto; margin-bottom: 1rem;">
                     <input type="text" id="community-search" placeholder="Search communities..." style="width: 100%; padding: 0.8rem 1.2rem; border-radius: var(--radius-full); background: var(--dark-2); border: 1px solid var(--border-glass); color: var(--text-primary);">
-                    <button class="btn btn-primary" onclick="window.createCommunity()" style="position: absolute; right: 4px; top: 4px; bottom: 4px; border-radius: var(--radius-full); padding: 0 1.2rem; font-weight: 600;">+ Create</button>
+                </div>
+                <div style="display: flex; gap: 1rem; justify-content: center;">
+                    <button class="btn btn-primary" onclick="window.location.href='create-community.html'" style="border-radius: var(--radius-full); padding: 0.5rem 1.5rem; font-weight: 600;">+ Create Community</button>
+                    <button class="btn btn-outline" onclick="window.location.href='create-group.html'" style="border-radius: var(--radius-full); padding: 0.5rem 1.5rem; font-weight: 600;">+ Create Group</button>
                 </div>
             </div>
         </section>

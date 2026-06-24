@@ -15,14 +15,14 @@ const CommunitySchema = new mongoose.Schema({
         type: String,
         default: '🏛️'
     },
-    members: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
-    }],
-    groups: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Group'
-    }],
+    memberCount: {
+        type: Number,
+        default: 0
+    },
+    groupCount: {
+        type: Number,
+        default: 0
+    },
     pendingRequests: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'

@@ -62,8 +62,21 @@
     <script src="js/notify.js"></script>
     <script src="js/api.js"></script>
     <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const communityId = urlParams.get('communityId');
+            if (communityId) {
+                // If accessed with a communityId, we can optionally show a notice
+                console.log('Creating group within community:', communityId);
+            }
+        });
+
         document.getElementById('create-group-form').addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const communityId = urlParams.get('communityId');
+
             const btn = document.getElementById('btn-submit');
             btn.disabled = true;
             btn.textContent = 'Creating...';
@@ -72,10 +85,17 @@
                 const name = document.getElementById('group-name').value;
                 const description = document.getElementById('group-desc').value;
 
-                await api.post('/groups', { name, description });
+                const payload = { name, description };
+                if (communityId) payload.communityId = communityId;
+
+                const res = await api.post('/groups', payload);
                 notify('Group created successfully!', 'success');
                 setTimeout(() => {
-                    window.location.href = 'create-community.html';
+                    if (communityId) {
+                        window.location.href = `community.html?id=${communityId}`;
+                    } else {
+                        window.location.href = `group.html?id=${res._id}`;
+                    }
                 }, 1500);
             } catch (err) {
                 notify(err.message, 'error');

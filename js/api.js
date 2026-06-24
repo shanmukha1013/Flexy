@@ -1052,7 +1052,7 @@ window.switchProfileTab = async function(tab, userId) {
         } else if (tab === 'communities') {
             if (user.communities && user.communities.length > 0) {
                 grid.innerHTML = user.communities.map(c => `
-                    <div class="glass-card hover-lift" style="padding: 1.5rem; cursor: pointer;" onclick="window.location.href='communities.html'">
+                    <div class="glass-card hover-lift" style="padding: 1.5rem; cursor: pointer;" onclick="window.location.href='community.html?id=${c._id}'">
                         <h4 style="margin: 0 0 0.5rem 0; font-family: var(--font-brand); font-size: 1.25rem;">${c.name}</h4>
                         <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.4;">${c.description || ''}</p>
                     </div>
@@ -1221,7 +1221,16 @@ async function initExplorePage() {
             if ((currentFilter === 'all' || currentFilter === 'communities') && data.communities && data.communities.length) {
                 html += '<h3 style="margin: 1.5rem 0 1rem;">Communities</h3><div style="display:flex; gap:1rem; flex-wrap:wrap; margin-bottom: 2rem;">';
                 data.communities.forEach(c => {
-                    html += `<div class="glass-card hover-lift" style="padding: 1.5rem; width: 280px; cursor: pointer;" onclick="window.location.href='communities.html'"><h4 style="margin: 0 0 0.5rem;">${c.name}</h4><p style="font-size: 0.85rem; color: var(--text-muted); margin: 0; line-height: 1.4;">${(c.description || '').substring(0, 80)}${c.description && c.description.length > 80 ? '...' : ''}</p></div>`;
+                    html += `<div class="glass-card hover-lift" style="padding: 1.5rem; width: 280px; cursor: pointer;" onclick="window.location.href='community.html?id=${c._id}'"><h4 style="margin: 0 0 0.5rem;">${c.name}</h4><p style="font-size: 0.85rem; color: var(--text-muted); margin: 0; line-height: 1.4;">${(c.description || '').substring(0, 80)}${c.description && c.description.length > 80 ? '...' : ''}</p></div>`;
+                });
+                html += '</div>';
+            }
+
+            // Groups
+            if ((currentFilter === 'all' || currentFilter === 'groups') && data.groups && data.groups.length) {
+                html += '<h3 style="margin: 1.5rem 0 1rem;">Groups</h3><div style="display:flex; gap:1rem; flex-wrap:wrap; margin-bottom: 2rem;">';
+                data.groups.forEach(g => {
+                    html += `<div class="glass-card hover-lift" style="padding: 1.5rem; width: 280px; cursor: pointer;" onclick="window.location.href='group.html?id=${g._id}'"><h4 style="margin: 0 0 0.5rem;">${g.name}</h4><p style="font-size: 0.85rem; color: var(--text-muted); margin: 0; line-height: 1.4;">${(g.description || '').substring(0, 80)}${g.description && g.description.length > 80 ? '...' : ''}</p></div>`;
                 });
                 html += '</div>';
             }
