@@ -62,6 +62,24 @@ router.post('/', auth, async (req, res) => {
     }
 });
 
+// Get All Groups (public)
+router.get('/', async (req, res) => {
+    try {
+        const filter = {};
+        if (req.query.communityId) filter.community = req.query.communityId;
+        if (req.query.standalone === 'true') filter.community = { $exists: false };
+        
+        const groups = await Group.find(filter)
+            .populate('creator', 'username displayName avatarInitials')
+            .populate('community', 'name icon')
+            .sort({ memberCount: -1 });
+        res.json(groups);
+    } catch (error) {
+        console.error('Error fetching groups:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 // Join Group
 router.post('/:id/join', auth, async (req, res) => {
     try {
