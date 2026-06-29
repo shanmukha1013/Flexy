@@ -75,6 +75,9 @@ const User = require('./models/User');
 const Notification = require('./models/Notification');
 
 async function checkEndedAuctions() {
+    // Guard: skip if MongoDB is not connected (readyState 1 = connected)
+    if (mongoose.connection.readyState !== 1) return;
+
     try {
         const now = new Date();
         const endedAuctions = await Auction.find({
@@ -125,10 +128,16 @@ async function checkEndedAuctions() {
 
 
 const PORT = process.env.PORT || 3001;
-const MONGODB_URI = (process.env.MONGODB_URI || 'mongodb://localhost:27017/flexy').replace('${MONGODB_PASSWORD}', process.env.MONGODB_PASSWORD || '');
+const MONGODB_URI = (process.env.MONGODB_URI || '').replace('${MONGODB_PASSWORD}', process.env.MONGODB_PASSWORD || '');
 
+if (!MONGODB_URI) {
+    console.error('❌ FATAL: MONGODB_URI environment variable is not set! Set it in Render Dashboard → Environment.');
+    process.exit(1);
+}
+
+console.log(`🔌 Connecting to MongoDB... (URI set: ${!!MONGODB_URI})`);
 mongoose.connect(MONGODB_URI, {
-    serverSelectionTimeoutMS: 30000, // Give 30s to connect before failing
+    serverSelectionTimeoutMS: 30000,
     socketTimeoutMS: 45000,
 })
 .then(() => {
