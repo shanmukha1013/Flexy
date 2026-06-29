@@ -151,6 +151,8 @@ mongoose.connect(MONGODB_URI, {
     });
 })
 .catch((err) => {
-    console.error('❌ MongoDB connection error:', err);
-    process.exit(1); // Exit so Render marks the deploy as failed (not hanging)
+    console.error('❌ MongoDB connection error:', err.message);
+    console.error('❌ Full error name:', err.name);
+    console.error('❌ Check: 1) MONGODB_URI is correct  2) Atlas Network Access allows 0.0.0.0/0');
+    setTimeout(() => process.exit(1), 500); // Small delay so logs flush before exit
 });
