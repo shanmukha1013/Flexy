@@ -4,5 +4,3 @@ middleware/
 server.js
 seed.js
 .env
-package.json
-package-lock.json
