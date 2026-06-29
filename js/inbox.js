@@ -43,7 +43,7 @@ class Inbox {
 
     initSocket() {
         try {
-            const PRODUCTION_BACKEND_URL = 'https://forreal.onrender.com'; // Change this to your Render backend URL
+            const PRODUCTION_BACKEND_URL = 'https://flexy-backend-pgw7.onrender.com';
             const socketUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                 ? `http://${window.location.hostname}:3001`
                 : PRODUCTION_BACKEND_URL;
