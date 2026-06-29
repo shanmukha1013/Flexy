@@ -12,24 +12,24 @@
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-    /* Brand Colors - Olive Green & Cream Theme */
+    /* Brand Colors - Clean Modern Look (Olive + Soft Cream) */
     --primary: #4A5D23; /* Olive Green */
     --primary-light: #F3F4ED;
     --primary-dark: #3B4A1C;
     
     --secondary: #3B4A1C; /* Darker Olive */
-    --highlight: #6B8E23; /* Brighter Olive */
+    --highlight: #556B2F; /* Brighter Olive */
 
     /* Typography */
     --font-brand: 'Outfit', sans-serif;
     --font-app: 'Manrope', sans-serif;
     --black: #000000;
     
-    /* Cream Surfaces */
-    --dark-0: #F8F6F0;  /* Warm Ivory Cream Background */
-    --dark-1: #FFFFFF;  /* Pure White Cards */
-    --dark-2: #EBE7DD;  /* Secondary Cream Surfaces */
-    --dark-3: #DED8CA;  /* Elegant Borders */
+    /* Surfaces */
+    --dark-0: #FDFBF7;  /* Soft Cream Background */
+    --dark-1: #FFFFFF;  /* White Cards/Surfaces */
+    --dark-2: #F0EFE9;  /* Secondary Cream Surfaces */
+    --dark-3: #E3E2DB;  /* Elegant Borders */
 
     /* OLIVE GREEN (Primary Action) */
     --primary: #4A5D23;
@@ -43,9 +43,9 @@
     --accent-glow: rgba(74, 93, 35, 0.15);
 
     /* HIGHLIGHTS */
-    --highlight: #6B8E23;
-    --highlight-hover: #556B2F;
-    --highlight-glow: rgba(107, 142, 35, 0.2);
+    --highlight: #556B2F;
+    --highlight-hover: #4A5D23;
+    --highlight-glow: rgba(85, 107, 47, 0.2);
 
     /* Success & Danger */
     --success: #4A5D23; 
@@ -53,10 +53,10 @@
     --danger-glow: rgba(139, 0, 0, 0.15);
 
     /* High Contrast Typography Colors */
-    --text-primary: #1F2937; /* Dark Charcoal */
-    --heading-color: #111827; /* Very Dark Charcoal (Premium) */
-    --text-secondary: #4B5563; /* Medium Gray */
-    --text-muted: #8A92A3; /* Soft Muted */
+    --text-primary: #2B2D2F; /* Dark Charcoal */
+    --heading-color: #2B2D2F; /* Dark Charcoal (Premium) */
+    --text-secondary: #4A4D50; /* Medium Charcoal Gray */
+    --text-muted: #7A7D80; /* Soft Muted Charcoal */
 
     /* Border Colors */
     --border-subtle: rgba(0, 0, 0, 0.04);
