@@ -1,9 +1,0 @@
-package.json
-package-lock.json
-node_modules/
-models/
-routes/
-middleware/
-server.js
-seed.js
-.env
