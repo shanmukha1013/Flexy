@@ -1,4 +1,5 @@
 {
-  "cleanUrls": true,
-  "trailingSlash": false
+  "buildCommand": "echo 'No build step needed'",
+  "outputDirectory": ".",
+  "cleanUrls": true
 }
