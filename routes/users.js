@@ -34,11 +34,14 @@ async function getDynamicAchievements(userId) {
     return achievements;
 }
 
-// Get registered users for suggestions (excluding current user)
+// Get registered users for suggestions (excluding current user and fake seed users)
 router.get('/', auth, async (req, res) => {
     try {
-        let query = User.find({ _id: { $ne: req.user.userId } })
-            .select('displayName username avatarUrl profilePhoto avatarInitials reputation followers createdAt');
+        const fakeEmails = ['arthur@example.com', 'isabella@example.com', 'vincent@example.com'];
+        let query = User.find({ 
+            _id: { $ne: req.user.userId },
+            email: { $nin: fakeEmails }
+        }).select('displayName username avatarUrl profilePhoto avatarInitials reputation followers createdAt');
             
         if (req.query.featured === 'true') {
             // Featured collectors based on reputation and followers
