@@ -14,7 +14,6 @@ const corsOptions = {
     credentials: false
 };
 app.use(cors(corsOptions));
-app.options('/(.*)', cors(corsOptions)); // Handle preflight for all routes (Node 24 compatible)
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
