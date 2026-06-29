@@ -1,0 +1,4 @@
+{
+  "buildCommand": "echo \"No build step needed\"",
+  "outputDirectory": "public"
+}
