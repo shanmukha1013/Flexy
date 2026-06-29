@@ -1,0 +1,6 @@
+models/
+routes/
+middleware/
+server.js
+seed.js
+.env
