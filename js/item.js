@@ -296,18 +296,18 @@ class ItemDetail {
             const bInit = bid.bidder?.avatarInitials || bName.charAt(0).toUpperCase();
             const bAv = bid.bidder?.avatarUrl ? `url(${bid.bidder.avatarUrl})` : `linear-gradient(135deg, var(--primary), #ea580c)`;
             
-            return \`
+            return `
             <div class="bid-history-item">
                 <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <div style="width: 28px; height: 28px; border-radius: 50%; background: \${bAv}; background-size: cover; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: white;">\${!bid.bidder?.avatarUrl ? bInit : ''}</div>
+                    <div style="width: 28px; height: 28px; border-radius: 50%; background: ${bAv}; background-size: cover; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: white;">${!bid.bidder?.avatarUrl ? bInit : ''}</div>
                     <div>
-                        <div style="font-size: 0.85rem; font-weight: 600; \${i === 0 ? 'color: var(--primary);' : ''}">\${bName} \${i === 0 ? '👑' : ''}</div>
-                        <div style="font-size: 0.72rem; color: var(--text-muted);">\${this.timeAgo(bid.timestamp || bid.date || new Date())}</div>
+                        <div style="font-size: 0.85rem; font-weight: 600; ${i === 0 ? 'color: var(--primary);' : ''}">${bName} ${i === 0 ? '👑' : ''}</div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted);">${this.timeAgo(bid.timestamp || bid.date || new Date())}</div>
                     </div>
                 </div>
-                <div style="font-weight: 700; \${i === 0 ? 'color: var(--primary);' : 'color: var(--text-secondary);'}">₹\${this.formatNum(bid.amount)}</div>
+                <div style="font-weight: 700; ${i === 0 ? 'color: var(--primary);' : 'color: var(--text-secondary);'}">₹${this.formatNum(bid.amount)}</div>
             </div>
-            \`;
+            `;
         }).join('');
     }
 
