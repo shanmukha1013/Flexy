@@ -122,18 +122,26 @@ async function checkEndedAuctions() {
         console.error("Error in checkEndedAuctions interval:", err);
     }
 }
-setInterval(checkEndedAuctions, 15000);
+
 
 const PORT = process.env.PORT || 3001;
-const MONGODB_URI = (process.env.MONGODB_URI || 'mongodb://localhost:27017/flexy').replace('${MONGODB_PASSWORD}', process.env.MONGODB_PASSWORD);
+const MONGODB_URI = (process.env.MONGODB_URI || 'mongodb://localhost:27017/flexy').replace('${MONGODB_PASSWORD}', process.env.MONGODB_PASSWORD || '');
 
-mongoose.connect(MONGODB_URI)
+mongoose.connect(MONGODB_URI, {
+    serverSelectionTimeoutMS: 30000, // Give 30s to connect before failing
+    socketTimeoutMS: 45000,
+})
 .then(() => {
     console.log('✅ Connected to MongoDB');
+
+    // Only start the auction check AFTER DB is connected
+    setInterval(checkEndedAuctions, 15000);
+
     server.listen(PORT, () => {
         console.log(`🚀 Flexy Server & Socket.IO running on port ${PORT}`);
     });
 })
 .catch((err) => {
     console.error('❌ MongoDB connection error:', err);
+    process.exit(1); // Exit so Render marks the deploy as failed (not hanging)
 });
