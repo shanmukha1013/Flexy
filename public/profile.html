@@ -8,81 +8,106 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <style>
         .profile-header {
-            background: var(--dark-2);
-            border: 1px solid var(--border-glass);
+            background: var(--dark-1);
+            border: 1px solid var(--dark-3);
             border-radius: var(--radius-lg);
             overflow: hidden;
             margin-bottom: 2rem;
             position: relative;
             margin-top: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.02);
         }
         .profile-cover {
-            height: 200px;
-            background: linear-gradient(135deg, var(--dark-1) 0%, var(--dark-3) 100%);
+            height: 250px;
+            background: linear-gradient(135deg, var(--dark-3) 0%, var(--primary-light) 100%);
             background-size: cover;
             background-position: center;
+            position: relative;
         }
         .profile-info {
-            padding: 1.5rem;
+            padding: 2rem;
             display: flex;
-            align-items: flex-end;
-            gap: 1.5rem;
+            align-items: flex-start;
+            gap: 2rem;
             position: relative;
-            top: -50px;
-            margin-bottom: -50px;
+            top: -60px;
+            margin-bottom: -60px;
         }
         .profile-avatar {
-            width: 120px;
-            height: 120px;
+            width: 140px;
+            height: 140px;
             border-radius: 50%;
-            border: 4px solid var(--dark-2);
+            border: 6px solid var(--dark-1);
             background: var(--dark-3);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 3rem;
+            font-size: 3.5rem;
             font-weight: bold;
             flex-shrink: 0;
             background-size: cover;
             background-position: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
         .profile-details {
             flex: 1;
-            padding-bottom: 0.5rem;
+            padding-top: 60px;
         }
         .profile-name {
             font-family: var(--font-brand);
-            font-size: 1.8rem;
+            font-size: 2.2rem;
             margin: 0;
-            color: var(--text-primary);
+            color: var(--heading-color);
+            line-height: 1.1;
         }
         .profile-username {
-            font-size: 0.95rem;
-            color: var(--text-secondary);
-            margin: 0.2rem 0 0.5rem 0;
+            font-size: 1rem;
+            color: var(--primary);
+            font-weight: 500;
+            margin: 0.3rem 0 1rem 0;
         }
         .profile-bio {
-            font-size: 0.9rem;
-            color: var(--text-primary);
-            max-width: 600px;
-            line-height: 1.4;
-            margin-bottom: 1rem;
+            font-size: 1.05rem;
+            color: var(--text-secondary);
+            max-width: 700px;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
         }
         .profile-stats {
             display: flex;
-            gap: 1.5rem;
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            font-weight: 500;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
         }
-        .profile-stats span {
-            color: var(--text-primary);
+        .stat-card {
+            background: var(--dark-0);
+            border: 1px solid var(--dark-3);
+            border-radius: var(--radius-md);
+            padding: 1rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 100px;
+        }
+        .stat-card span {
+            color: var(--primary);
+            font-family: var(--font-brand);
+            font-size: 1.5rem;
             font-weight: 700;
+            line-height: 1;
+            margin-bottom: 0.2rem;
+        }
+        .stat-card div {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
         .profile-actions {
             display: flex;
             gap: 1rem;
-            padding-bottom: 0.5rem;
+            position: absolute;
+            top: 75px;
+            right: 2rem;
         }
         
         .profile-tabs {
@@ -153,8 +178,18 @@
                     <p class="profile-username" id="profile-username">@username</p>
                     <p class="profile-bio" id="profile-bio">Collector bio goes here.</p>
                     <div class="profile-stats">
-                        <div><span id="stat-followers">0</span> Followers</div>
-                        <div><span id="stat-following">0</span> Following</div>
+                        <div class="stat-card">
+                            <span id="stat-items">0</span>
+                            <div>Items</div>
+                        </div>
+                        <div class="stat-card">
+                            <span id="stat-followers">0</span>
+                            <div>Followers</div>
+                        </div>
+                        <div class="stat-card">
+                            <span id="stat-following">0</span>
+                            <div>Following</div>
+                        </div>
                     </div>
                 </div>
                 <div class="profile-actions" id="profile-actions-container">

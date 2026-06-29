@@ -37,8 +37,21 @@ async function getDynamicAchievements(userId) {
 // Get registered users for suggestions (excluding current user)
 router.get('/', auth, async (req, res) => {
     try {
-        const users = await User.find({ _id: { $ne: req.user.userId } })
-            .select('displayName username avatarUrl profilePhoto avatarInitials reputation');
+        let query = User.find({ _id: { $ne: req.user.userId } })
+            .select('displayName username avatarUrl profilePhoto avatarInitials reputation followers createdAt');
+            
+        if (req.query.featured === 'true') {
+            // Featured collectors based on reputation and followers
+            query = query.sort({ reputation: -1, followers: -1 });
+        } else if (req.query.sort === 'newest') {
+            // New collectors based on creation date
+            query = query.sort({ createdAt: -1 });
+        } else {
+            // Default randomish sort (or by reputation)
+            query = query.sort({ reputation: -1 });
+        }
+        
+        const users = await query.limit(10).exec();
         res.json(users);
     } catch (error) {
         console.error('MONGOOSE ERROR:', error);

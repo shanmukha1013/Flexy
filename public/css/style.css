@@ -12,43 +12,45 @@
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-    /* Brand Colors - Sophisticated Light Theme */
-    --primary: #0F9D7A; /* Deep Emerald */
-    --primary-light: #E6F5F1;
-    --primary-dark: #0A6B53;
+    /* Brand Colors - Olive Green & Cream Theme */
+    --primary: #4A5D23; /* Olive Green */
+    --primary-light: #F3F4ED;
+    --primary-dark: #3B4A1C;
     
-    --secondary: #0A6B53; /* Dark Emerald */
-    --highlight: #0F9D7A; /* Emerald */
+    --secondary: #3B4A1C; /* Darker Olive */
+    --highlight: #6B8E23; /* Brighter Olive */
 
     /* Typography */
     --font-brand: 'Outfit', sans-serif;
-    --font-app: 'Manrope', sans-serif; /* FLEXY Luxury Auction House Design System */
+    --font-app: 'Manrope', sans-serif;
     --black: #000000;
-    --dark-0: #F5F1EA;  /* Warm Luxury Cream Background */
+    
+    /* Cream Surfaces */
+    --dark-0: #F8F6F0;  /* Warm Ivory Cream Background */
     --dark-1: #FFFFFF;  /* Pure White Cards */
-    --dark-2: #EEE7DC;  /* Secondary Surfaces */
-    --dark-3: #E2D7C8;  /* Elegant Borders */
+    --dark-2: #EBE7DD;  /* Secondary Cream Surfaces */
+    --dark-3: #DED8CA;  /* Elegant Borders */
 
-    /* DEEP EMERALD (Primary Action) */
-    --primary: #0F9D7A;
-    --primary-hover: #0B7C60;
-    --primary-glow: rgba(15, 157, 122, 0.15);
-    --primary-glow-thick: rgba(15, 157, 122, 0.3);
+    /* OLIVE GREEN (Primary Action) */
+    --primary: #4A5D23;
+    --primary-hover: #3B4A1C;
+    --primary-glow: rgba(74, 93, 35, 0.15);
+    --primary-glow-thick: rgba(74, 93, 35, 0.3);
 
-    /* SECONARY ACCENT (Re-using Green for strict palette) */
-    --accent: #0F9D7A;
-    --accent-hover: #0B7C60;
-    --accent-glow: rgba(15, 157, 122, 0.15);
+    /* SECONARY ACCENT */
+    --accent: #4A5D23;
+    --accent-hover: #3B4A1C;
+    --accent-glow: rgba(74, 93, 35, 0.15);
 
-    /* HIGHLIGHTS (Re-using Green) */
-    --highlight: #0F9D7A; /* Emerald */
-    --highlight-hover: #085B46;
-    --highlight-glow: rgba(15, 157, 122, 0.2);
+    /* HIGHLIGHTS */
+    --highlight: #6B8E23;
+    --highlight-hover: #556B2F;
+    --highlight-glow: rgba(107, 142, 35, 0.2);
 
     /* Success & Danger */
-    --success: #0F9D7A; /* Reusing deep emerald for premium success */
-    --danger: #0B7C60; /* Deep Emerald */
-    --danger-glow: rgba(15, 157, 122, 0.15);
+    --success: #4A5D23; 
+    --danger: #8B0000; /* Dark Red */
+    --danger-glow: rgba(139, 0, 0, 0.15);
 
     /* High Contrast Typography Colors */
     --text-primary: #1F2937; /* Dark Charcoal */
