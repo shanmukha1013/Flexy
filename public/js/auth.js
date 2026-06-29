@@ -121,6 +121,7 @@ class Auth {
             this.showOTPModal(email);
         } catch (error) {
             console.error('Login error:', error);
+            alert("DEBUG ERROR: " + error.message);
             this.showNotification(error.message || 'Failed to send OTP. Please try again.', 'error');
         } finally {
             if (submitBtn) {
