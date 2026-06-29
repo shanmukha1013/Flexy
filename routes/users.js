@@ -62,6 +62,22 @@ router.get('/', auth, async (req, res) => {
     }
 });
 
+// TEMPORARY: Cleanup Fake Users from DB
+router.delete('/cleanup-fake', async (req, res) => {
+    try {
+        const result = await User.deleteMany({
+            $or: [
+                { username: /^user_/i },
+                { username: /^test/i },
+                { email: { $in: ['arthur@example.com', 'isabella@example.com', 'vincent@example.com'] } }
+            ]
+        });
+        res.json({ message: 'Fake users deleted', count: result.deletedCount });
+    } catch (error) {
+        res.status(500).json({ error: 'Server error', details: error.message });
+    }
+});
+
 // Get Demo User (Temporary to simulate auth)
 router.get('/all_for_demo', async (req, res) => {
     try {
