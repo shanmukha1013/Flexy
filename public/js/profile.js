@@ -64,7 +64,7 @@ class ProfileApp {
         if (this.isMyProfile) {
             actionsContainer.innerHTML = `
                 <button class="btn btn-outline" style="border-radius: var(--radius-full); padding: 0.4rem 1.5rem;" onclick="document.getElementById('edit-profile-modal').style.display='block'">Edit Profile</button>
-                <button class="btn btn-outline" style="border-radius: var(--radius-full); padding: 0.4rem 1.5rem; border-color: var(--danger); color: var(--danger);" onclick="auth.logout()">Logout</button>
+                <button class="btn btn-outline" style="border-radius: var(--radius-full); padding: 0.4rem 1.5rem; border-color: var(--danger); color: var(--danger);" onclick="logout()">Logout</button>
             `;
         } else {
             const isFollowing = this.currentUser && followers.some(f => 

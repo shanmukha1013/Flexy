@@ -92,6 +92,23 @@
             60% { transform: translateX(-6px); }
             80% { transform: translateX(6px); }
         }
+        .auth-inline-error {
+            min-height: 1.1rem;
+            margin: 0.4rem 0 0;
+            color: var(--danger);
+            font-size: 0.82rem;
+        }
+        .otp-status {
+            min-height: 1.25rem;
+            margin: 0;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+        .otp-status.is-error { color: var(--danger); }
+        .otp-status.is-success { color: var(--success); }
+        .otp-status.is-info { color: var(--text-secondary); }
+        .otp-input:disabled { opacity: 0.6; }
+        #resend-otp[aria-disabled="true"] { pointer-events: none; opacity: 0.45; }
         .otp-status-badge {
             display: inline-flex;
             align-items: center;
@@ -129,7 +146,8 @@
             <form id="login-form" class="auth-form" style="margin-top: 1.5rem;">
                 <div class="form-group">
                     <label for="email" style="color: var(--text-secondary); font-weight: 500; margin-bottom: 0.5rem; display: block;">Email Address</label>
-                    <input type="email" id="email" placeholder="you@example.com" required style="width: 100%; background: var(--dark-3); border: 1px solid var(--border-glass); padding: 0.75rem 1rem; border-radius: var(--radius-md); color: var(--text-primary); font-size: 1rem; outline: none; transition: border-color var(--transition-fast);" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border-glass)'">
+                    <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" required aria-describedby="email-error" style="width: 100%; background: var(--dark-3); border: 1px solid var(--border-glass); padding: 0.75rem 1rem; border-radius: var(--radius-md); color: var(--text-primary); font-size: 1rem; outline: none; transition: border-color var(--transition-fast);" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border-glass)'">
+                    <p id="email-error" class="auth-inline-error" role="alert" aria-live="polite"></p>
                 </div>
                 
                 <button type="submit" class="btn btn-primary btn-block" style="margin-top: 1.5rem; font-weight: 600;">
@@ -148,34 +166,36 @@
         <div class="modal-content glass-card">
             <div class="modal-header">
                 <h3>Verify Security Code</h3>
-                <span class="close-modal">&times;</span>
+                <button type="button" class="close-modal" aria-label="Close">&times;</button>
             </div>
             <div class="modal-body" style="text-align: center;">
                 <div class="otp-status-badge">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
                     Verification code sent
                 </div>
-                <p id="otp-message" style="color: var(--text-secondary); font-size: 0.92rem; margin-bottom: 1.5rem; line-height: 1.6;">Enter the 6-digit OTP code sent to your email.</p>
-                <div class="otp-container">
-                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" autocomplete="one-time-code">
-                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric">
-                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric">
-                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric">
-                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric">
-                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric">
+                <p id="otp-message" style="color: var(--text-secondary); font-size: 0.92rem; margin-bottom: 1.5rem; line-height: 1.6;">Enter the 6-digit code sent to your email.</p>
+                <div class="otp-container" role="group" aria-label="6-digit verification code">
+                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" autocomplete="one-time-code" aria-label="Digit 1 of 6">
+                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" aria-label="Digit 2 of 6">
+                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" aria-label="Digit 3 of 6">
+                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" aria-label="Digit 4 of 6">
+                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" aria-label="Digit 5 of 6">
+                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" aria-label="Digit 6 of 6">
                 </div>
-                <div class="otp-actions" style="margin-top: 2rem;">
-                    <button id="verify-otp" class="btn btn-primary btn-block" style="font-weight: 600;">Verify &amp; Continue</button>
+                <p id="otp-status" class="otp-status" role="alert" aria-live="polite"></p>
+                <div class="otp-actions" style="margin-top: 1.25rem;">
+                    <button id="verify-otp" type="button" class="btn btn-primary btn-block" style="font-weight: 600;">Verify &amp; Continue</button>
                     <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 1rem;">
-                        Didn't receive code? <a href="#" id="resend-otp" class="forgot-link">Resend OTP<span id="otp-countdown" style="color: var(--text-muted);"></span></a>
+                        Didn't receive code? <a href="#" id="resend-otp" class="forgot-link" role="button">Resend code<span id="otp-countdown" style="color: var(--text-muted);"></span></a>
                     </p>
-                    <p style="color: var(--text-muted); font-size: 0.78rem; margin-top: 0.5rem;">Code expires in 5 minutes</p>
+                    <p id="otp-expiry" style="color: var(--text-muted); font-size: 0.78rem; margin-top: 0.5rem;">Code expires in 5 minutes</p>
+                    <p style="font-size: 0.85rem; margin-top: 0.75rem;"><a href="#" id="change-email" class="forgot-link">Use a different email</a></p>
                 </div>
             </div>
         </div>
     </div>
     
-    <script src="js/notify.js?v=2"></script>
-    <script src="js/auth.js?v=2"></script>
+    <script src="js/notify.js?v=3"></script>
+    <script src="js/auth.js?v=3"></script>
 </body>
 </html>

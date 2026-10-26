@@ -10,6 +10,7 @@
     "test:unit": "node --test \"test/unit/**/*.test.js\"",
     "test:integration": "node --test --test-concurrency=1 \"test/integration/**/*.test.js\"",
     "check": "node scripts/check-syntax.js",
+    "email:check": "node scripts/check-email.js",
     "build": "echo 'No build step'"
   },
   "keywords": [],

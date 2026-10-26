@@ -70,7 +70,7 @@ Building Flexy helped me improve my skills in Full-Stack Development, product de
 
 # Running Locally
 
-Requirements: Node.js 20.19 or newer, and a MongoDB database (local or Atlas).
+Requirements: Node.js 22.12 or newer (required by the Resend SDK), and a MongoDB database (local or Atlas).
 
 ```bash
 npm ci
@@ -100,18 +100,56 @@ and set `EMAIL_FROM`.
 
 ---
 
+# How Sign-In Works
+
+Flexy uses passwordless email sign-in. Entering a new address creates the account and
+continues to profile setup; an existing address signs straight in.
+
+1. `POST /api/auth/request-otp` validates the email, generates a six-digit code with
+   `crypto.randomInt`, stores only an HMAC of it (bound to the email) and sends it with
+   Resend. The response is `200` only after Resend accepts the message; otherwise `502`
+   (provider error), `503` (no provider configured, or Resend rate limit) or `429`.
+2. The login page shows the code screen only after that `200`.
+3. `POST /api/auth/verify-otp` checks the code. A code expires after 5 minutes, works
+   once, and allows 5 attempts. Requesting a new code invalidates the previous one.
+4. On success the API returns a 15-minute access token and sets a 30-day HttpOnly
+   refresh cookie. Logout revokes refresh tokens on the server.
+
+Abuse limits: one code per email per 60 seconds, 10 per email per hour, and per-IP
+limits on both endpoints. The per-IP counters live in memory, so they are per server
+instance; that is fine for a single Render instance but would need a shared store
+(such as Redis) if the API is scaled out.
+
+### Setting up real email delivery
+
+1. Create an API key in the Resend dashboard and set `RESEND_API_KEY`.
+2. To email anyone other than yourself, add and verify your domain in Resend
+   (DNS records), then set `EMAIL_FROM`, for example `Flexy <login@yourdomain.com>`.
+3. Check the setup without starting the app:
+
+   ```bash
+   npm run email:check -- you@example.com
+   ```
+
+   It sends one sample email and reports whether Resend accepted it, with a hint for
+   common rejections. Acceptance is not proof of inbox delivery; confirm in your inbox
+   or on the Emails page of the Resend dashboard.
+
+---
+
 # Testing
 
 ```bash
 npm test                  # everything
 npm run test:unit         # configuration, email service, OTP and validation helpers
-npm run test:integration  # API, authentication, authorization, Socket.IO, server startup
+npm run test:integration  # API, authentication, Resend SDK over HTTP, Socket.IO, server startup
 npm run check             # syntax check of every JavaScript file
 ```
 
 Integration tests run against a temporary in-memory MongoDB
-([mongodb-memory-server](https://github.com/typegoose/mongodb-memory-server)) and a fake
-email service. They never send email or touch a real database. The first run downloads
+([mongodb-memory-server](https://github.com/typegoose/mongodb-memory-server)), with either
+a fake email service or the real Resend SDK pointed at a local stand-in for the Resend
+API. They never send email or touch a real database. The first run downloads
 a MongoDB binary (about 70 MB) unless one is already cached.
 
 ---

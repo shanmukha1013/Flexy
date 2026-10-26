@@ -238,6 +238,50 @@ describe('POST /api/auth/verify-otp', () => {
         assert.equal(res.status, 400);
     });
 
+    test('requesting a new code invalidates the previous one', async () => {
+        const { app, emailService } = h.buildApp();
+        const first = await requestCode(app, emailService);
+        // Skip the 60s resend cooldown instead of waiting for it.
+        await OTPVerification.updateOne({ email: EMAIL }, { $set: { lastSentAt: new Date(Date.now() - 61 * 1000) } });
+        const second = await requestCode(app, emailService);
+        assert.equal(emailService.sent.length, 2);
+        if (first === second) return; // identical random codes (1 in a million)
+
+        const old = await request(app).post('/api/auth/verify-otp').send({ email: EMAIL, code: first });
+        assert.equal(old.status, 400);
+        const fresh = await request(app).post('/api/auth/verify-otp').send({ email: EMAIL, code: second });
+        assert.equal(fresh.status, 200);
+    });
+
+    test('a wrong guess does not lock the user out: attempts are per code', async () => {
+        const { app, emailService } = h.buildApp();
+        const code = await requestCode(app, emailService);
+        const wrong = await request(app).post('/api/auth/verify-otp').send({ email: EMAIL, code: wrongCode(code) });
+        assert.equal(wrong.body.reason, 'incorrect_code');
+        assert.equal(wrong.body.attemptsRemaining, 4);
+        assert.equal((await request(app).post('/api/auth/verify-otp').send({ email: EMAIL, code })).status, 200);
+    });
+
+    test('error responses carry a machine-readable reason', async () => {
+        const { app, emailService } = h.buildApp();
+        assert.equal((await request(app).post('/api/auth/verify-otp').send({ email: EMAIL, code: '12' })).body.reason, 'invalid_request');
+        assert.equal((await request(app).post('/api/auth/verify-otp').send({ email: EMAIL, code: '123456' })).body.reason, 'invalid_code');
+
+        const code = await requestCode(app, emailService);
+        await OTPVerification.updateOne({ email: EMAIL }, { $set: { codeExpiresAt: new Date(Date.now() - 1000) } });
+        assert.equal((await request(app).post('/api/auth/verify-otp').send({ email: EMAIL, code })).body.reason, 'expired');
+    });
+
+    test('the per-IP verification limiter returns 429 once exceeded', async () => {
+        const { app } = h.buildApp({ rateLimits: { otpRequest: { limit: 100 }, otpVerify: { limit: 3 } } });
+        for (let i = 0; i < 3; i++) {
+            await request(app).post('/api/auth/verify-otp').send({ email: `x${i}@example.test`, code: '123456' });
+        }
+        const blocked = await request(app).post('/api/auth/verify-otp').send({ email: EMAIL, code: '123456' });
+        assert.equal(blocked.status, 429);
+        assert.match(blocked.body.error, /Too many verification attempts/);
+    });
+
     test('an existing verified user logs in with isNewUser=false', async () => {
         const { app, emailService } = h.buildApp();
         await h.createUser({ email: EMAIL, isVerified: true });
@@ -247,7 +291,68 @@ describe('POST /api/auth/verify-otp', () => {
     });
 });
 
+describe('database failures', () => {
+    const quiet = (t) => t.mock.method(console, 'error', () => {});
+
+    test('a database error while requesting a code returns 500 and sends nothing', async (t) => {
+        quiet(t);
+        const { app, emailService } = h.buildApp();
+        t.mock.method(OTPVerification, 'findOne', () => ({ lean: () => Promise.reject(new Error('connection reset')) }));
+        const res = await request(app).post('/api/auth/request-otp').send({ email: EMAIL });
+        assert.equal(res.status, 500);
+        assert.deepEqual(res.body, { error: 'Server error' });
+        assert.equal(emailService.sent.length, 0);
+    });
+
+    test('a database error while saving the code returns 500 and sends nothing', async (t) => {
+        quiet(t);
+        const { app, emailService } = h.buildApp();
+        t.mock.method(OTPVerification, 'create', () => Promise.reject(new Error('write concern failed')));
+        const res = await request(app).post('/api/auth/request-otp').send({ email: EMAIL });
+        assert.equal(res.status, 500);
+        assert.equal(emailService.sent.length, 0);
+    });
+
+    test('a database error during verification never issues a session', async (t) => {
+        quiet(t);
+        const { app, emailService } = h.buildApp();
+        await request(app).post('/api/auth/request-otp').send({ email: EMAIL });
+        const code = emailService.lastCodeFor(EMAIL);
+        t.mock.method(OTPVerification, 'findOneAndUpdate', () => Promise.reject(new Error('primary stepped down')));
+
+        const res = await request(app).post('/api/auth/verify-otp').send({ email: EMAIL, code });
+        assert.equal(res.status, 500);
+        assert.equal(res.body.token, undefined);
+        assert.equal(res.headers['set-cookie'], undefined);
+        assert.doesNotMatch(JSON.stringify(res.body), /primary stepped down/);
+    });
+
+    test('an unexpected exception from the email service is reported as a failed send', async (t) => {
+        quiet(t);
+        const { app, emailService } = h.buildApp();
+        emailService.failures.push(new TypeError('fetch failed'));
+        const res = await request(app).post('/api/auth/request-otp').send({ email: EMAIL });
+        assert.equal(res.status, 502);
+        assert.equal((await OTPVerification.findOne({ email: EMAIL }).lean()).codeHash, null);
+    });
+});
+
 describe('sessions: refresh, logout and token checks', () => {
+    test('the token issued by OTP login authorizes protected marketplace routes', async () => {
+        const { app, emailService } = h.buildApp();
+        const session = await h.loginViaOtp(app, emailService, EMAIL);
+        const auth = { Authorization: `Bearer ${session.token}` };
+
+        assert.equal((await request(app).get('/api/notifications').set(auth)).status, 200);
+        const created = await request(app).post('/api/auctions').set(auth)
+            .send({ title: 'Coin', description: 'Rare', startingBid: 10, durationHours: 24 });
+        assert.equal(created.status, 201);
+        assert.equal(String(created.body.seller), String(session.user._id));
+
+        assert.equal((await request(app).get('/api/notifications')).status, 401);
+        assert.equal((await request(app).post('/api/auctions').send({ title: 'x', description: 'y', startingBid: 10, durationHours: 24 })).status, 401);
+    });
+
     test('refresh requires the cookie and issues a new access token', async () => {
         const { app, emailService, config } = h.buildApp();
         assert.equal((await request(app).post('/api/auth/refresh')).status, 401);

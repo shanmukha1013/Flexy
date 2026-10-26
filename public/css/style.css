@@ -1410,6 +1410,11 @@ input, textarea, select, button {
     opacity: 1;
 }
 
+@media (max-width: 480px) {
+    .modal { padding: 0 0.75rem; }
+    .modal-body { padding: 1.25rem 1rem; }
+}
+
 .modal-content {
     background: var(--dark-1);
     border: 1px solid var(--border-glass);
@@ -1454,6 +1459,10 @@ input, textarea, select, button {
 }
 
 .otp-input {
+    /* Shrinks to fit six boxes on narrow phones instead of overflowing. */
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 50px;
     width: 50px;
     height: 54px;
     text-align: center;

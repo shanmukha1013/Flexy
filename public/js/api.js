@@ -154,9 +154,27 @@ class ApiClient {
     put(endpoint, data) {
         return this.request('PUT', endpoint, data === undefined ? {} : data);
     }
+
+    // Revokes the refresh token server-side, then clears the local session.
+    async logout() {
+        try {
+            await fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' });
+        } catch (e) { /* offline: still clear the local session */ }
+        this.token = null;
+        localStorage.removeItem('flexy_token');
+        localStorage.removeItem('flexy_user');
+        sessionStorage.removeItem('flexy_pending_otp');
+        window.location.href = 'login.html';
+    }
 }
 
 const api = new ApiClient();
+
+// Pages such as Settings and Profile don't load auth.js, so their "Sign out"
+// buttons need a global logout() from here.
+if (typeof window.logout !== 'function') {
+    window.logout = () => api.logout();
+}
 
 // Rendering logic
 async function loadHomeFeed() {
