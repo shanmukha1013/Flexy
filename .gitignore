@@ -6,6 +6,18 @@ node_modules/
 .env.*
 !.env.example
 
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local database files and dumps
+data/db/
+dump/
+*.sqlite
+*.sqlite3
+
 # Logs
 *.log
 npm-debug.log*

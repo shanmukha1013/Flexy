@@ -2,9 +2,11 @@ const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 const {
     createEmailService,
+    otpEmailContent,
     EmailNotConfiguredError,
     EmailDeliveryError,
-    maskEmail
+    maskEmail,
+    escapeHtml
 } = require('../../lib/email');
 
 // Stand-in for the Resend SDK class: records calls and returns a scripted result.
@@ -14,9 +16,9 @@ function fakeResend(behaviour) {
         constructor(apiKey) {
             this.apiKey = apiKey;
             this.emails = {
-                send: async (payload) => {
-                    calls.push({ apiKey, payload });
-                    return behaviour(payload);
+                send: async (payload, options) => {
+                    calls.push({ apiKey, payload, options });
+                    return behaviour(payload, options);
                 }
             };
         }
@@ -97,5 +99,66 @@ describe('email service', () => {
 
     test('maskEmail hides most of the local part', () => {
         assert.equal(maskEmail('shanmukha@example.com'), 'sh***@example.com');
+    });
+
+    test('the send is given an AbortSignal so a hung request is actually cancelled', async () => {
+        let seenSignal;
+        const { FakeResend } = fakeResend((payload, options) => {
+            seenSignal = options && options.signal;
+            return new Promise(() => {});
+        });
+        const service = createEmailService(resendConfig(), { ResendClient: FakeResend, timeoutMs: 50 });
+        await assert.rejects(service.sendOtp('u@x.test', '111111', 5), (err) => {
+            assert.equal(err.timedOut, true);
+            return true;
+        });
+        assert.ok(seenSignal instanceof AbortSignal);
+        assert.equal(seenSignal.aborted, true);
+    });
+
+    test('a 429 from the provider is flagged as rate limited', async () => {
+        const { FakeResend } = fakeResend(() => ({ data: null, error: { name: 'rate_limit_exceeded', statusCode: 429, message: 'slow down' } }));
+        const service = createEmailService(resendConfig(), { ResendClient: FakeResend });
+        await assert.rejects(service.sendOtp('u@x.test', '111111', 5), (err) => err.rateLimited === true);
+    });
+
+    test('an SDK-reported network failure (statusCode null) is a delivery error', async () => {
+        const { FakeResend } = fakeResend(() => ({ data: null, error: { name: 'application_error', statusCode: null, message: 'Unable to fetch data.' } }));
+        const service = createEmailService(resendConfig(), { ResendClient: FakeResend });
+        await assert.rejects(service.sendOtp('u@x.test', '111111', 5), (err) => err instanceof EmailDeliveryError && !err.rateLimited);
+    });
+});
+
+describe('OTP email content', () => {
+    const content = otpEmailContent('042917', 5);
+
+    test('has a subject, an HTML body and a plain-text alternative containing the code', () => {
+        assert.equal(content.subject, 'Your Flexy verification code');
+        assert.ok(content.html.includes('042917'));
+        assert.ok(content.text.includes('042917'));
+        assert.doesNotMatch(content.subject, /\d{6}/);
+    });
+
+    test('states the five-minute expiry and warns not to share the code', () => {
+        assert.match(content.html, /expires in <strong>5 minutes<\/strong>/);
+        assert.match(content.text, /expires in 5 minutes/);
+        assert.match(content.html, /Do not share this code/);
+        assert.match(content.text, /Do not share this code/);
+    });
+
+    test('is branded and laid out for mobile clients', () => {
+        assert.match(content.html, /FLEXY/);
+        assert.match(content.html, /<meta name="viewport" content="width=device-width, initial-scale=1">/);
+        assert.match(content.html, /max-width:480px/);
+    });
+
+    test('escapes dynamic values', () => {
+        const hostile = otpEmailContent('<img src=x onerror=alert(1)>', '5"><script>');
+        assert.doesNotMatch(hostile.html, /<img src=x|<script>/);
+        assert.equal(escapeHtml(`<a href="x">'&`), '&lt;a href=&quot;x&quot;&gt;&#39;&amp;');
+    });
+
+    test('uses the singular for a one-minute expiry', () => {
+        assert.match(otpEmailContent('123456', 1).text, /expires in 1 minute and/);
     });
 });

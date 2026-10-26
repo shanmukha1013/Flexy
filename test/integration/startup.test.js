@@ -133,6 +133,26 @@ describe('server.js startup', () => {
         assert.doesNotMatch(server.output(), /running on port/);
     });
 
+    test('production starts with a complete configuration and warns about the shared sender', async () => {
+        const server = startServer({
+            NODE_ENV: 'production',
+            MONGODB_URI: mongod.getUri('flexy_prod_ok'),
+            JWT_SECRET: 'p'.repeat(40),
+            JWT_REFRESH_SECRET: 'q'.repeat(40),
+            RESEND_API_KEY: 're_placeholder_not_used'
+        });
+        try {
+            const [, port] = await server.waitFor(/running on port (\d+) \(production\)/);
+            await server.waitFor(/Connected to MongoDB/);
+            assert.match(server.output(), /shared resend\.dev sender/);
+            assert.doesNotMatch(server.output(), /re_placeholder_not_used/);
+            const health = await fetch(`http://127.0.0.1:${port}/api/health`).then(r => r.json());
+            assert.equal(health.email, 'configured');
+        } finally {
+            await server.stop();
+        }
+    });
+
     test('production refuses EMAIL_TRANSPORT=console', async () => {
         const server = startServer({
             NODE_ENV: 'production',

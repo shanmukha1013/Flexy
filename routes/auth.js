@@ -214,12 +214,17 @@ router.post('/request-otp', async (req, res, next) => {
             }
             const detail = err.providerError ? ` (${err.providerError.name || 'provider error'}${err.providerError.statusCode ? ' ' + err.providerError.statusCode : ''})` : '';
             console.error(`[AUTH] Failed to send verification code to ${maskEmail(email)}: ${err.message}${detail}`);
+            if (err.rateLimited) {
+                res.set('Retry-After', '60');
+                return res.status(503).json({ error: 'Our email service is busy right now. Please try again in a minute.', retryAfter: 60 });
+            }
             return res.status(502).json({ error: 'We could not send the verification email. Please try again in a few minutes.' });
         }
 
         res.json({
             message: 'Verification code sent. It can take a minute to arrive, so check your spam folder too.',
-            expiresInSeconds: OTP_TTL_MS / 1000
+            expiresInSeconds: OTP_TTL_MS / 1000,
+            resendAvailableInSeconds: OTP_RESEND_COOLDOWN_MS / 1000
         });
 
     } catch (error) {
@@ -239,7 +244,7 @@ router.post('/verify-otp', async (req, res, next) => {
         const email = normalizeEmail(rawEmail);
         const code = typeof rawCode === 'string' ? rawCode.trim() : '';
         if (!email || !isWellFormedOtp(code)) {
-            return res.status(400).json({ error: 'Enter the 6-digit code from your email' });
+            return res.status(400).json({ error: 'Enter the 6-digit code from your email', reason: 'invalid_request' });
         }
 
         // 1. Count the attempt atomically *before* comparing, so parallel
@@ -260,22 +265,23 @@ router.post('/verify-otp', async (req, res, next) => {
         if (!otpRecord) {
             const current = await OTPVerification.findOne({ email }).lean();
             let error = INVALID_CODE_ERROR;
+            let reason = 'invalid_code';
             if (current && current.codeHash && current.attempts >= OTP_MAX_ATTEMPTS) {
                 error = 'Too many attempts. Please request a new code.';
+                reason = 'too_many_attempts';
             } else if (current && current.codeHash && current.codeExpiresAt && current.codeExpiresAt <= now) {
                 error = 'This code has expired. Please request a new one.';
+                reason = 'expired';
             }
-            return res.status(400).json({ error });
+            return res.status(400).json({ error, reason });
         }
 
         // 2. Compare against the stored HMAC (constant time)
         if (!otpMatches(config.jwt.accessSecret, email, code, otpRecord.codeHash)) {
             const remaining = OTP_MAX_ATTEMPTS - otpRecord.attempts;
-            return res.status(400).json({
-                error: remaining > 0
-                    ? `Incorrect code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`
-                    : 'Too many attempts. Please request a new code.'
-            });
+            return res.status(400).json(remaining > 0
+                ? { error: `Incorrect code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`, reason: 'incorrect_code', attemptsRemaining: remaining }
+                : { error: 'Too many attempts. Please request a new code.', reason: 'too_many_attempts', attemptsRemaining: 0 });
         }
 
         // 3. Consume it: only one request can ever win this update.
@@ -284,7 +290,7 @@ router.post('/verify-otp', async (req, res, next) => {
             { $set: { consumedAt: now, codeHash: null } }
         );
         if (!consumed) {
-            return res.status(400).json({ error: INVALID_CODE_ERROR });
+            return res.status(400).json({ error: INVALID_CODE_ERROR, reason: 'invalid_code' });
         }
 
         // Check if user exists

@@ -22,12 +22,18 @@
     function createNotificationElement(message, type) {
         const el = document.createElement('div');
         el.className = `notification ${type}`;
-        el.innerHTML = `
-            <div class="notification-content">
-                <div class="notification-icon">${getIcon(type)}</div>
-                <div class="notification-message">${message}</div>
-            </div>
-        `;
+        // Messages often contain server error text, so they are rendered as
+        // text, never as HTML.
+        const content = document.createElement('div');
+        content.className = 'notification-content';
+        const icon = document.createElement('div');
+        icon.className = 'notification-icon';
+        icon.textContent = getIcon(type);
+        const text = document.createElement('div');
+        text.className = 'notification-message';
+        text.textContent = String(message);
+        content.append(icon, text);
+        el.appendChild(content);
         return el;
     }
 

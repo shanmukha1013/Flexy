@@ -161,59 +161,14 @@ class API {
     }
 
     // Auth API Methods
-
-    // Login with OTP
-    async loginWithOTP(phone, name) {
-        try {
-            // In a real app, this would call the actual API
-            // For demo, simulate API call
-            await this.simulateDelay();
-            
-            // Generate mock response
-            return {
-                success: true,
-                data: {
-                    user: {
-                        id: 'user_' + Date.now(),
-                        phone: phone,
-                        name: name,
-                        avatar: name.charAt(0).toUpperCase()
-                    },
-                    token: 'token_' + Date.now()
-                },
-                message: 'OTP sent successfully'
-            };
-        } catch (error) {
-            throw error;
-        }
+    // The demo OTP methods that used to live here accepted a hardcoded code.
+    // They were never called; real sign-in is the email OTP flow at /login.html.
+    async loginWithOTP() {
+        throw new Error('Sign in at /login.html');
     }
 
-    // Verify OTP
-    async verifyOTP(phone, otp) {
-        try {
-            await this.simulateDelay();
-            
-            // Mock verification
-            if (otp === '123456') {
-                return {
-                    success: true,
-                    data: {
-                        user: {
-                            id: 'user_' + Date.now(),
-                            phone: phone,
-                            name: 'User',
-                            avatar: 'U'
-                        },
-                        token: 'token_' + Date.now()
-                    },
-                    message: 'Login successful'
-                };
-            } else {
-                throw new Error('Invalid OTP');
-            }
-        } catch (error) {
-            throw error;
-        }
+    async verifyOTP() {
+        throw new Error('Sign in at /login.html');
     }
 
     // Get user profile
