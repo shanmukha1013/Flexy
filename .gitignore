@@ -3,9 +3,8 @@ node_modules/
 
 # Environment Variables - NEVER COMMIT
 .env
-.env.local
-.env.production
-.env.*.local
+.env.*
+!.env.example
 
 # Logs
 *.log

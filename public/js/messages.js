@@ -3,6 +3,7 @@
 class MessagingSystem {
     constructor() {
         this.currentUser = JSON.parse(localStorage.getItem('flexy_user') || 'null');
+        this.myId = this.currentUser ? (this.currentUser._id || this.currentUser.id) : null;
         this.conversations = [];
         this.activePeerId = null;
         this.chatHistory = [];
@@ -24,10 +25,55 @@ class MessagingSystem {
         this.setupTextarea();
         
         await this.loadConversations();
-        
+        this.initRealtime();
+
         // Auto-open if query param exists
         const peerId = new URLSearchParams(window.location.search).get('user');
         if (peerId) {
+            this.openChatById(peerId);
+        }
+    }
+
+    // New messages are pushed by the server after they are saved.
+    async initRealtime() {
+        if (typeof connectSocket !== 'function') return;
+        try {
+            const socket = await connectSocket();
+            socket.on('receive_message', (data) => this.onIncomingMessage(data));
+        } catch (err) {
+            console.warn(err.message);
+        }
+    }
+
+    async onIncomingMessage(data) {
+        if (!data) return;
+        if (data.senderId === this.activePeerId) {
+            this.chatHistory.push({
+                _id: data.messageId,
+                sender: data.senderId,
+                recipient: data.recipientId,
+                content: data.text,
+                createdAt: new Date(data.timestamp).toISOString()
+            });
+            this.renderHistory();
+            // Opening the history marks the conversation as read
+            await api.get(`/messages/${this.activePeerId}`).catch(() => {});
+        }
+        try {
+            this.conversations = await api.get('/messages');
+            this.renderConversations(this.conversations);
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    // Looks up the peer's name/avatar from the loaded conversations so no user
+    // text has to be embedded inside an inline onclick handler.
+    openChatById(peerId) {
+        const conv = this.conversations.find(c => String(c.peerId) === String(peerId));
+        if (conv) {
+            this.openChat(conv.peerId, conv.peerName, conv.peerAvatar, conv.avatarInitials);
+        } else {
             this.openChat(peerId);
         }
     }
@@ -59,17 +105,17 @@ class MessagingSystem {
 
         container.innerHTML = list.map(conv => `
             <div class="chat-item ${this.activePeerId === conv.peerId ? 'active' : ''} ${conv.unread ? 'unread' : ''}" 
-                 onclick="window.messagingSystem.openChat('${conv.peerId}', '${conv.peerName}', '${conv.peerAvatar}', '${conv.avatarInitials}')">
+                 onclick="window.messagingSystem.openChatById('${conv.peerId}')">
                 <div class="chat-avatar" style="${conv.peerAvatar ? `background-image: url('${conv.peerAvatar}');` : ''}">
-                    ${!conv.peerAvatar ? conv.avatarInitials : ''}
+                    ${!conv.peerAvatar ? this.escapeHtml(conv.avatarInitials || '') : ''}
                 </div>
                 <div style="flex: 1; overflow: hidden;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 0.2rem;">
-                        <span style="font-weight: 600; color: var(--text-primary); font-size: 0.95rem;">${conv.peerName}</span>
+                        <span style="font-weight: 600; color: var(--text-primary); font-size: 0.95rem;">${this.escapeHtml(conv.peerName || '')}</span>
                         <span style="font-size: 0.75rem; color: var(--text-muted);">${this.formatTime(conv.lastTime)}</span>
                     </div>
                     <div style="font-size: 0.85rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                        ${conv.lastMessage || '...'}
+                        ${conv.lastMessage ? this.escapeHtml(conv.lastMessage) : '...'}
                     </div>
                 </div>
             </div>
@@ -162,7 +208,7 @@ class MessagingSystem {
         }
 
         container.innerHTML = this.chatHistory.map(msg => {
-            const isMe = msg.sender === this.currentUser.id;
+            const isMe = String(msg.sender) === String(this.myId);
             const timeStr = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             
             return `
@@ -216,7 +262,7 @@ class MessagingSystem {
     }
 
     escapeHtml(unsafe) {
-        return unsafe
+        return String(unsafe)
              .replace(/&/g, "&amp;")
              .replace(/</g, "&lt;")
              .replace(/>/g, "&gt;")

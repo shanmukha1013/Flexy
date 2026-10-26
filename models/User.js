@@ -106,6 +106,12 @@ const UserSchema = new mongoose.Schema({
     },
     otpExpires: {
         type: Date
+    },
+    // Embedded in refresh tokens; incrementing it revokes every refresh token
+    // issued to this account (used by logout).
+    tokenVersion: {
+        type: Number,
+        default: 0
     }
 }, { timestamps: true });
 

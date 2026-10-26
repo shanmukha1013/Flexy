@@ -1,48 +1,43 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const Item = require('../models/Item');
+const Notification = require('../models/Notification');
 const auth = require('../middleware/auth');
-const Post = require('../models/Post');
-const Community = require('../models/Community');
-const Group = require('../models/Group');
-const Auction = require('../models/Auction');
+const { getDynamicAchievements } = require('../lib/achievements');
+const {
+    validateIdParam,
+    badRequest,
+    cleanText,
+    cleanImageUrl,
+    cleanNumber,
+    USERNAME_RE
+} = require('../lib/validation');
 
-async function getDynamicAchievements(userId) {
-    const achievements = [];
-    try {
-        const postCount = await Post.countDocuments({ author: userId });
-        if (postCount >= 1) achievements.push("First Flex");
+router.param('id', validateIdParam);
 
-        const communityCount = await Community.countDocuments({ creator: userId });
-        if (communityCount >= 1) achievements.push("First Community");
+// Fields that are never returned by the API.
+const HIDDEN_FIELDS = '-otpCode -otpExpires -tokenVersion';
+// Contact details are only shown to the account owner.
+const PRIVATE_FIELDS = ['email', 'phone', 'savedAuctions', 'isEmailVerified'];
 
-        const groupCount = await Group.countDocuments({ creator: userId });
-        if (groupCount >= 1) achievements.push("First Group");
-
-        const auctionCount = await Auction.countDocuments({ seller: userId });
-        if (auctionCount >= 1) achievements.push("First Auction");
-
-        const user = await User.findById(userId);
-        const cabinetCount = user && user.showcaseCabinet ? user.showcaseCabinet.length : 0;
-        if (cabinetCount >= 5) achievements.push("Elite Collector");
-
-        const followersCount = user && user.followers ? user.followers.length : 0;
-        if (followersCount >= 5) achievements.push("Legacy Builder");
-    } catch (err) {
-        console.error("Error calculating achievements dynamically:", err);
+function profileFor(userDoc, viewerId) {
+    const userObj = userDoc.toObject();
+    if (viewerId !== String(userDoc._id)) {
+        for (const field of PRIVATE_FIELDS) delete userObj[field];
     }
-    return achievements;
+    return userObj;
 }
 
 // Get registered users for suggestions (excluding current user and fake seed users)
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, async (req, res, next) => {
     try {
         const fakeEmails = ['arthur@example.com', 'isabella@example.com', 'vincent@example.com'];
-        let query = User.find({ 
+        let query = User.find({
             _id: { $ne: req.user.userId },
             email: { $nin: fakeEmails }
         }).select('displayName username avatarUrl profilePhoto avatarInitials reputation followers createdAt');
-            
+
         if (req.query.featured === 'true') {
             // Featured collectors based on reputation and followers
             query = query.sort({ reputation: -1, followers: -1 });
@@ -53,204 +48,209 @@ router.get('/', auth, async (req, res) => {
             // Default randomish sort (or by reputation)
             query = query.sort({ reputation: -1 });
         }
-        
+
         const users = await query.limit(10).exec();
         res.json(users);
     } catch (error) {
-        console.error('MONGOOSE ERROR:', error);
-        res.status(500).json({ error: 'Server error', details: error.message });
+        next(error);
     }
 });
 
-// TEMPORARY: Cleanup Fake Users from DB
-router.delete('/cleanup-fake', async (req, res) => {
-    try {
-        const result = await User.deleteMany({
-            $or: [
-                { username: /^user_/i },
-                { username: /^test/i },
-                { email: { $in: ['arthur@example.com', 'isabella@example.com', 'vincent@example.com'] } }
-            ]
-        });
-        res.json({ message: 'Fake users deleted', count: result.deletedCount });
-    } catch (error) {
-        res.status(500).json({ error: 'Server error', details: error.message });
-    }
-});
-
-// Get Demo User (Temporary to simulate auth)
-router.get('/all_for_demo', async (req, res) => {
-    try {
-        const users = await User.find().limit(1);
-        res.json(users);
-    } catch (error) {
-        console.error('MONGOOSE ERROR:', error);
-        res.status(500).json({ error: 'Server error', details: error.message });
-    }
-});
-
-// Get Profile
-router.get('/:id', async (req, res) => {
+// Get Profile (public; email and phone are only included for the owner)
+router.get('/:id', auth.optional, async (req, res, next) => {
     try {
         const user = await User.findById(req.params.id)
+            .select(HIDDEN_FIELDS)
             .populate('followers', 'username displayName avatarInitials')
             .populate('following', 'username displayName avatarInitials')
             .populate('showcaseCabinet')
             .populate('communities');
         if (!user) return res.status(404).json({ error: 'User not found' });
-        
-        const achievements = await getDynamicAchievements(user._id);
-        const userObj = user.toObject();
-        userObj.achievements = achievements;
-        
+
+        const userObj = profileFor(user, req.user && req.user.userId);
+        userObj.achievements = await getDynamicAchievements(user._id, user);
+
         res.json(userObj);
     } catch (error) {
-        console.error('MONGOOSE ERROR:', error);
-        res.status(500).json({ error: 'Server error', details: error.message });
+        next(error);
     }
 });
 
 // Update Profile
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, async (req, res, next) => {
     if (req.user.userId !== req.params.id) return res.status(403).json({ error: 'Unauthorized' });
     try {
-        const { displayName, username, email, phone, bio, interests, avatarUrl } = req.body;
-        
-        const updateData = {};
-        if (displayName !== undefined) updateData.displayName = displayName;
-        if (username !== undefined) {
-            let cleanUsername = username.trim();
+        const currentUser = await User.findById(req.params.id);
+        if (!currentUser) return res.status(404).json({ error: 'User not found' });
+
+        const body = req.body || {};
+        const set = {};
+        const unset = {};
+
+        const displayName = cleanText(body.displayName, 'Display name', { max: 50 });
+        if (displayName !== undefined) {
+            if (!displayName) throw badRequest('Display name cannot be empty');
+            set.displayName = displayName;
+            set.avatarInitials = displayName.substring(0, 2).toUpperCase();
+        }
+
+        if (body.username !== undefined) {
+            if (typeof body.username !== 'string') throw badRequest('Username must be text');
+            let cleanUsername = body.username.trim();
             if (cleanUsername.startsWith('@')) {
                 cleanUsername = cleanUsername.substring(1);
             }
-            const existing = await User.findOne({ username: cleanUsername, _id: { $ne: req.params.id } });
-            if (existing) return res.status(400).json({ error: 'Username is already taken' });
-            updateData.username = cleanUsername;
+            if (cleanUsername !== currentUser.username) {
+                if (!USERNAME_RE.test(cleanUsername)) {
+                    throw badRequest('Username must be 3-30 characters: letters, numbers, underscores or dots');
+                }
+                const existing = await User.findOne({ username: cleanUsername, _id: { $ne: req.params.id } }).select('_id').lean();
+                if (existing) return res.status(400).json({ error: 'Username is already taken' });
+                set.username = cleanUsername;
+            }
         }
-        if (email !== undefined) updateData.email = email;
-        if (phone !== undefined) updateData.phone = phone;
-        if (bio !== undefined) updateData.bio = bio;
-        if (interests !== undefined) updateData.interests = interests;
-        if (avatarUrl !== undefined) {
-            updateData.avatarUrl = avatarUrl;
-            updateData.profilePhoto = avatarUrl;
+
+        // The email address is the login identity. Changing it without verifying
+        // the new address would let an account be pointed at someone else's inbox.
+        if (body.email !== undefined && body.email !== null) {
+            const requested = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+            if (requested && requested !== (currentUser.email || '')) {
+                throw badRequest('Changing your email address is not supported yet');
+            }
         }
+
+        if (body.phone !== undefined) {
+            const phone = cleanText(body.phone, 'Phone', { max: 20 });
+            if (phone && !/^\+?[\d\s()-]{6,20}$/.test(phone)) throw badRequest('Phone number is not valid');
+            // Empty string would collide in the sparse unique index; remove the field instead.
+            if (phone) set.phone = phone; else unset.phone = 1;
+        }
+
+        const bio = cleanText(body.bio, 'Bio', { max: 500 });
+        if (bio !== undefined) set.bio = bio;
+
+        if (body.interests !== undefined) {
+            if (!Array.isArray(body.interests) || body.interests.length > 20) {
+                throw badRequest('Interests must be a list of at most 20 entries');
+            }
+            set.interests = body.interests.map((v, i) => cleanText(v, `Interest ${i + 1}`, { max: 40, required: true }));
+        }
+
         // Also support profilePhoto directly if provided
-        const { profilePhoto } = req.body;
-        if (profilePhoto !== undefined) {
-            updateData.profilePhoto = profilePhoto;
-            updateData.avatarUrl = profilePhoto;
-        }
-        
-        // Update avatarInitials if displayName changed
-        if (displayName) {
-            updateData.avatarInitials = displayName.substring(0, 2).toUpperCase();
+        const photo = body.profilePhoto !== undefined
+            ? cleanImageUrl(body.profilePhoto, 'Profile photo')
+            : cleanImageUrl(body.avatarUrl, 'Avatar');
+        if (photo !== undefined) {
+            set.avatarUrl = photo;
+            set.profilePhoto = photo;
         }
 
-        // Auto verify if completing profile setup
-        const currentUser = await User.findById(req.params.id);
-        if (currentUser && !currentUser.isVerified) {
-             if (displayName && username && bio && interests) {
-                  updateData.isVerified = true;
-             }
+        // Profile setup is complete once the required fields are present. Bio is
+        // optional in the setup form, so it must not be required here (it used
+        // to be, which sent users without a bio back to setup forever).
+        if (!currentUser.isVerified) {
+            const merged = { ...currentUser.toObject(), ...set };
+            if (merged.displayName && merged.username && Array.isArray(merged.interests) && merged.interests.length > 0) {
+                set.isVerified = true;
+            }
         }
 
-        const user = await User.findByIdAndUpdate(req.params.id, updateData, { new: true });
+        const update = { $set: set };
+        if (Object.keys(unset).length) update.$unset = unset;
+
+        const user = await User.findByIdAndUpdate(req.params.id, update, { returnDocument: 'after', runValidators: true })
+            .select(HIDDEN_FIELDS);
         if (!user) return res.status(404).json({ error: 'User not found' });
-        
-        res.json(user);
+
+        res.json(profileFor(user, req.user.userId));
     } catch (error) {
-        console.error('MONGOOSE ERROR:', error);
-        res.status(500).json({ error: 'Server error', details: error.message });
+        if (error.code === 11000) return res.status(400).json({ error: 'Username is already taken' });
+        next(error);
     }
 });
 
 // Follow User
-router.post('/:id/follow', auth, async (req, res) => {
+router.post('/:id/follow', auth, async (req, res, next) => {
     try {
-        const targetUser = await User.findById(req.params.id);
-        const currentUser = await User.findById(req.user.userId);
-        
+        const targetId = req.params.id;
+        const currentId = req.user.userId;
+        if (targetId === currentId) return res.status(400).json({ error: 'Cannot follow yourself' });
+
+        const [targetUser, currentUser] = await Promise.all([
+            User.findById(targetId).select('_id').lean(),
+            User.findById(currentId).select('displayName username').lean()
+        ]);
         if (!targetUser || !currentUser) return res.status(404).json({ error: 'User not found' });
-        if (targetUser._id.toString() === currentUser._id.toString()) return res.status(400).json({ error: 'Cannot follow yourself' });
 
-        if (!targetUser.followers.includes(currentUser._id)) {
-            targetUser.followers.push(currentUser._id);
-            currentUser.following.push(targetUser._id);
-            await targetUser.save();
-            await currentUser.save();
+        // The filter makes repeated or concurrent follows idempotent. (modifiedCount
+        // can't be used for this: timestamps bump updatedAt on every update.)
+        const result = await User.updateOne(
+            { _id: targetId, followers: { $ne: currentId } },
+            { $push: { followers: currentId } }
+        );
+        await User.updateOne({ _id: currentId }, { $addToSet: { following: targetId } });
 
+        if (result.matchedCount > 0) {
             // Create follow notification
-            const Notification = require('../models/Notification');
             await new Notification({
-                recipient: targetUser._id,
-                sender: currentUser._id,
+                recipient: targetId,
+                sender: currentId,
                 type: 'follow',
                 title: 'New Follower',
                 message: `${currentUser.displayName || currentUser.username} started following you.`,
-                relatedItem: currentUser._id,
+                relatedItem: currentId,
                 itemModel: 'User'
             }).save();
         }
         res.json({ message: 'Successfully followed' });
     } catch (error) {
-        console.error('MONGOOSE ERROR:', error);
-        res.status(500).json({ error: 'Server error', details: error.message });
+        next(error);
     }
 });
 
 // Unfollow User
-router.post('/:id/unfollow', auth, async (req, res) => {
+router.post('/:id/unfollow', auth, async (req, res, next) => {
     try {
-        const targetUser = await User.findById(req.params.id);
-        const currentUser = await User.findById(req.user.userId);
-        
-        if (!targetUser || !currentUser) return res.status(404).json({ error: 'User not found' });
+        const targetId = req.params.id;
+        const currentId = req.user.userId;
 
-        targetUser.followers = targetUser.followers.filter(id => id.toString() !== currentUser._id.toString());
-        currentUser.following = currentUser.following.filter(id => id.toString() !== targetUser._id.toString());
-        
-        await targetUser.save();
-        await currentUser.save();
+        const targetUser = await User.findById(targetId).select('_id').lean();
+        if (!targetUser) return res.status(404).json({ error: 'User not found' });
+
+        await User.updateOne({ _id: targetId }, { $pull: { followers: currentId } });
+        await User.updateOne({ _id: currentId }, { $pull: { following: targetId } });
         res.json({ message: 'Successfully unfollowed' });
     } catch (error) {
-        console.error('MONGOOSE ERROR:', error);
-        res.status(500).json({ error: 'Server error', details: error.message });
+        next(error);
     }
 });
 
 // Add Item to Showcase Cabinet
-router.post('/:id/cabinet', auth, async (req, res) => {
+router.post('/:id/cabinet', auth, async (req, res, next) => {
     if (req.user.userId !== req.params.id) return res.status(403).json({ error: 'Unauthorized' });
     try {
-        const { title, description, image, category, year, condition, isForSale, price } = req.body;
-        
-        const Item = require('../models/Item');
-        const item = new Item({
-            title,
-            description,
-            image,
-            owner: req.params.id,
-            category,
-            year,
-            condition,
-            isForSale: isForSale || false,
-            price: price || 0
-        });
-        await item.save();
-
-        const user = await User.findById(req.params.id);
+        const body = req.body || {};
+        const user = await User.findById(req.params.id).select('_id').lean();
         if (!user) return res.status(404).json({ error: 'User not found' });
-        
-        user.showcaseCabinet.push(item._id);
-        await user.save();
+
+        const item = await Item.create({
+            title: cleanText(body.title, 'Title', { max: 120, required: true }),
+            description: cleanText(body.description, 'Description', { max: 2000 }),
+            image: cleanImageUrl(body.image, 'Image'),
+            owner: req.params.id,
+            category: cleanText(body.category, 'Category', { max: 60 }),
+            year: cleanText(body.year, 'Year', { max: 20 }),
+            condition: cleanText(body.condition, 'Condition', { max: 60 }),
+            isForSale: body.isForSale === true,
+            price: cleanNumber(body.price, 'Price') || 0
+        });
+
+        await User.updateOne({ _id: req.params.id }, { $push: { showcaseCabinet: item._id } });
 
         res.json({ message: 'Item added to showcase cabinet successfully', item });
     } catch (error) {
-        console.error('Error adding showcase item:', error);
-        res.status(500).json({ error: 'Server error' });
+        next(error);
     }
 });
 
 module.exports = router;
-

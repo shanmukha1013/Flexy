@@ -2,241 +2,333 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const OTPVerification = require('../models/OTPVerification');
-const { Resend } = require('resend');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const auth = require('../middleware/auth');
-const Post = require('../models/Post');
-const Community = require('../models/Community');
-const Group = require('../models/Group');
-const Auction = require('../models/Auction');
+const { getDynamicAchievements } = require('../lib/achievements');
+const { normalizeEmail, isObjectId } = require('../lib/validation');
+const { EmailNotConfiguredError, maskEmail } = require('../lib/email');
+const {
+    OTP_TTL_MS,
+    OTP_MAX_ATTEMPTS,
+    OTP_RESEND_COOLDOWN_MS,
+    OTP_SEND_WINDOW_MS,
+    OTP_MAX_SENDS_PER_WINDOW,
+    generateOtp,
+    hashOtp,
+    otpMatches,
+    isWellFormedOtp
+} = require('../lib/otp');
 
-async function getDynamicAchievements(userId) {
-    const achievements = [];
-    try {
-        const postCount = await Post.countDocuments({ author: userId });
-        if (postCount >= 1) achievements.push("First Flex");
-
-        const communityCount = await Community.countDocuments({ creator: userId });
-        if (communityCount >= 1) achievements.push("First Community");
-
-        const groupCount = await Group.countDocuments({ creator: userId });
-        if (groupCount >= 1) achievements.push("First Group");
-
-        const auctionCount = await Auction.countDocuments({ seller: userId });
-        if (auctionCount >= 1) achievements.push("First Auction");
-
-        const user = await User.findById(userId);
-        const cabinetCount = user && user.showcaseCabinet ? user.showcaseCabinet.length : 0;
-        if (cabinetCount >= 5) achievements.push("Elite Collector");
-
-        const followersCount = user && user.followers ? user.followers.length : 0;
-        if (followersCount >= 5) achievements.push("Legacy Builder");
-    } catch (err) {
-        console.error("Error calculating achievements dynamically:", err);
-    }
-    return achievements;
-}
-
-const resend = new Resend(process.env.RESEND_API_KEY);
-const JWT_SECRET = process.env.JWT_SECRET || 'flexy_secure_jwt_key_2026';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'flexy_secure_refresh_key_2026';
+const REFRESH_COOKIE = 'refreshToken';
+const REFRESH_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const INVALID_CODE_ERROR = 'Invalid or expired verification code. Please request a new one.';
 
 // Helper to parse cookie from headers
 function getCookie(req, name) {
     const cookieHeader = req.headers.cookie;
     if (!cookieHeader) return null;
-    const cookies = cookieHeader.split(';');
-    for (let cookie of cookies) {
-        const [key, val] = cookie.trim().split('=');
-        if (key === name) return decodeURIComponent(val);
+    for (const cookie of cookieHeader.split(';')) {
+        const separator = cookie.indexOf('=');
+        if (separator === -1) continue;
+        if (cookie.slice(0, separator).trim() === name) {
+            try {
+                return decodeURIComponent(cookie.slice(separator + 1).trim());
+            } catch (err) {
+                return null;
+            }
+        }
     }
     return null;
 }
 
-// Request OTP
-router.post('/request-otp', async (req, res) => {
+function cookieOptions(config) {
+    return {
+        httpOnly: true,
+        secure: config.cookie.secure,
+        sameSite: config.cookie.sameSite,
+        path: '/'
+    };
+}
+
+function sessionUser(user) {
+    return {
+        _id: user._id,
+        email: user.email,
+        username: user.username,
+        displayName: user.displayName,
+        profilePhoto: user.profilePhoto || '',
+        avatarUrl: user.avatarUrl || user.profilePhoto || '',
+        avatarInitials: user.avatarInitials,
+        bio: user.bio || '',
+        interests: user.interests || [],
+        isVerified: user.isVerified
+    };
+}
+
+function signAccessToken(config, user) {
+    return jwt.sign(
+        { userId: user._id.toString(), email: user.email },
+        config.jwt.accessSecret,
+        { expiresIn: config.jwt.accessTtl, algorithm: 'HS256' }
+    );
+}
+
+function issueSession(res, config, user) {
+    const refreshToken = jwt.sign(
+        { userId: user._id.toString(), tv: user.tokenVersion || 0 },
+        config.jwt.refreshSecret,
+        { expiresIn: config.jwt.refreshTtl, algorithm: 'HS256' }
+    );
+
+    // Store refresh token securely in HttpOnly Cookie
+    res.cookie(REFRESH_COOKIE, refreshToken, { ...cookieOptions(config), maxAge: REFRESH_COOKIE_MAX_AGE_MS });
+    return signAccessToken(config, user);
+}
+
+function verifyRefreshToken(config, token) {
     try {
-        const { email } = req.body;
-        if (!email) {
+        const decoded = jwt.verify(token, config.jwt.refreshSecret, { algorithms: ['HS256'] });
+        return decoded && isObjectId(decoded.userId) ? decoded : null;
+    } catch (err) {
+        return null;
+    }
+}
+
+function rateLimited(res, retryAfterMs, error) {
+    const retryAfter = Math.max(1, Math.ceil(retryAfterMs / 1000));
+    res.set('Retry-After', String(retryAfter));
+    return res.status(429).json({ error, retryAfter });
+}
+
+async function createUserForEmail(email) {
+    const tempDisplayName = email.split('@')[0].slice(0, 50);
+    // Retry on the (very unlikely) collision of the random temporary username.
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            return await User.create({
+                email,
+                username: 'user_' + crypto.randomBytes(4).toString('hex'),
+                displayName: tempDisplayName,
+                isVerified: false,
+                isEmailVerified: true,
+                avatarInitials: tempDisplayName.substring(0, 2).toUpperCase()
+            });
+        } catch (err) {
+            if (err.code !== 11000) throw err;
+            // The email itself may have been registered concurrently.
+            const existing = await User.findOne({ email });
+            if (existing) return existing;
+        }
+    }
+    throw new Error('Could not allocate a unique username');
+}
+
+// Request OTP
+router.post('/request-otp', async (req, res, next) => {
+    try {
+        const { config, emailService } = req.app.locals;
+        const rawEmail = req.body && req.body.email;
+        if (!rawEmail) {
             return res.status(400).json({ error: 'Email is required' });
         }
 
-        const cleanEmail = email.toLowerCase().trim();
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+        const email = normalizeEmail(rawEmail);
+        if (!email) {
             return res.status(400).json({ error: 'Please enter a valid email address' });
         }
 
-        // 1. Generate secure random 6-digit OTP
-        const otpCode = crypto.randomInt(100000, 999999).toString();
-
-        // 2. Set expiry to 5 minutes
-        const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-
-        // 3. Save OTP in MongoDB (delete any existing OTP for this email first)
-        await OTPVerification.deleteMany({ email: cleanEmail });
-
-        const verificationRecord = new OTPVerification({
-            email: cleanEmail,
-            otp: otpCode,
-            expiresAt,
-            attempts: 0
-        });
-        await verificationRecord.save();
-
-        // 4. Send OTP email using Resend
-        const emailHtml = `Welcome to Flexy.<br><br>Your verification code is:<br><br><strong>${otpCode}</strong><br><br>This code expires in 5 minutes.<br><br>If you did not request this code, ignore this email.`;
-
-        const { data, error } = await resend.emails.send({
-            from: 'Flexy <onboarding@resend.dev>',
-            to: cleanEmail,
-            subject: 'Your Flexy Verification Code',
-            html: emailHtml
-        });
-
-        if (error) {
-            console.error('[AUTH] Resend error details:', error);
-            console.log(`[AUTH] DEVELOPMENT BYPASS: Ignored Resend error. OTP is ${otpCode}`);
-            // We ignore the error and return 200 so the frontend can still show the OTP modal.
-            // The user can login using the universal '000000' bypass code.
-        } else {
-            console.log(`[AUTH] Sent OTP ${otpCode} to ${cleanEmail} | Message ID: ${data ? data.id : 'unknown'}`);
+        if (!emailService.isConfigured()) {
+            return res.status(503).json({ error: 'Email sign-in is temporarily unavailable because no email provider is configured on the server.' });
         }
-        
-        res.json({ message: 'OTP sent successfully to email' });
+
+        // Per-address limits: a short cooldown between sends and a cap per hour.
+        // The per-IP limiter in app.js bounds abuse across many addresses.
+        const now = new Date();
+        const existing = await OTPVerification.findOne({ email }).lean();
+
+        if (existing && existing.lastSentAt && now - existing.lastSentAt < OTP_RESEND_COOLDOWN_MS) {
+            return rateLimited(res, OTP_RESEND_COOLDOWN_MS - (now - existing.lastSentAt),
+                'Please wait before requesting another code.');
+        }
+
+        const windowActive = existing && existing.windowStartedAt && now - existing.windowStartedAt < OTP_SEND_WINDOW_MS;
+        const windowStartedAt = windowActive ? new Date(existing.windowStartedAt) : now;
+        const sendCount = (windowActive ? existing.sendCount || 0 : 0) + 1;
+        if (sendCount > OTP_MAX_SENDS_PER_WINDOW) {
+            return rateLimited(res, OTP_SEND_WINDOW_MS - (now - windowStartedAt),
+                'Too many codes have been requested for this email. Please try again later.');
+        }
+
+        // 1. Generate secure random 6-digit OTP and keep only its HMAC
+        const code = generateOtp();
+        const codeHash = hashOtp(config.jwt.accessSecret, email, code);
+        const record = {
+            email,
+            codeHash,
+            codeExpiresAt: new Date(now.getTime() + OTP_TTL_MS),
+            attempts: 0,
+            consumedAt: null,
+            lastSentAt: now,
+            sendCount,
+            windowStartedAt,
+            expiresAt: new Date(Math.max(windowStartedAt.getTime() + OTP_SEND_WINDOW_MS, now.getTime() + OTP_TTL_MS)),
+            createdAt: now
+        };
+
+        // 2. Store it, replacing any previous code for this address. The
+        //    lastSentAt guard makes concurrent requests lose instead of both sending.
+        if (existing) {
+            const result = await OTPVerification.replaceOne(
+                { _id: existing._id, lastSentAt: existing.lastSentAt || null },
+                record
+            );
+            if (result.matchedCount === 0) {
+                return rateLimited(res, OTP_RESEND_COOLDOWN_MS, 'Please wait before requesting another code.');
+            }
+        } else {
+            try {
+                await OTPVerification.create(record);
+            } catch (err) {
+                if (err.code === 11000) {
+                    return rateLimited(res, OTP_RESEND_COOLDOWN_MS, 'Please wait before requesting another code.');
+                }
+                throw err;
+            }
+        }
+
+        // 3. Send it. Success is only reported once the provider accepts the message.
+        try {
+            const delivery = await emailService.sendOtp(email, code, OTP_TTL_MS / 60000);
+            console.log(`[AUTH] Verification code for ${maskEmail(email)} accepted by ${delivery.provider} (message id ${delivery.id})`);
+        } catch (err) {
+            // Don't leave a usable code behind for an email that never went out,
+            // and hand the cooldown back so the user can retry straight away.
+            await OTPVerification.updateOne(
+                { email, codeHash },
+                { $set: { codeHash: null, lastSentAt: (existing && existing.lastSentAt) || null } }
+            );
+
+            if (err instanceof EmailNotConfiguredError) {
+                return res.status(503).json({ error: 'Email sign-in is temporarily unavailable because no email provider is configured on the server.' });
+            }
+            const detail = err.providerError ? ` (${err.providerError.name || 'provider error'}${err.providerError.statusCode ? ' ' + err.providerError.statusCode : ''})` : '';
+            console.error(`[AUTH] Failed to send verification code to ${maskEmail(email)}: ${err.message}${detail}`);
+            return res.status(502).json({ error: 'We could not send the verification email. Please try again in a few minutes.' });
+        }
+
+        res.json({
+            message: 'Verification code sent. It can take a minute to arrive, so check your spam folder too.',
+            expiresInSeconds: OTP_TTL_MS / 1000
+        });
 
     } catch (error) {
-        console.error('OTP Request Error:', error);
-        res.status(500).json({ error: 'Failed to send OTP' });
+        next(error);
     }
 });
 
 // Verify OTP
-router.post('/verify-otp', async (req, res) => {
+router.post('/verify-otp', async (req, res, next) => {
     try {
-        const { email, code } = req.body;
-        if (!email || !code) {
+        const { config } = req.app.locals;
+        const { email: rawEmail, code: rawCode } = req.body || {};
+        if (!rawEmail || !rawCode) {
             return res.status(400).json({ error: 'Email and verification code are required' });
         }
 
-        const cleanEmail = email.toLowerCase().trim();
+        const email = normalizeEmail(rawEmail);
+        const code = typeof rawCode === 'string' ? rawCode.trim() : '';
+        if (!email || !isWellFormedOtp(code)) {
+            return res.status(400).json({ error: 'Enter the 6-digit code from your email' });
+        }
 
-        // 1. Find OTP record
-        const otpRecord = await OTPVerification.findOne({ email: cleanEmail });
+        // 1. Count the attempt atomically *before* comparing, so parallel
+        //    guesses cannot all slip in under the attempt limit.
+        const now = new Date();
+        const otpRecord = await OTPVerification.findOneAndUpdate(
+            {
+                email,
+                codeHash: { $type: 'string' },
+                consumedAt: null,
+                codeExpiresAt: { $gt: now },
+                attempts: { $lt: OTP_MAX_ATTEMPTS }
+            },
+            { $inc: { attempts: 1 } },
+            { returnDocument: 'after' }
+        );
+
         if (!otpRecord) {
-            return res.status(400).json({ error: 'Invalid OTP' });
-        }
-
-        // 2. Verify attempt limit not exceeded (Max 5 attempts)
-        if (otpRecord.attempts >= 5) {
-            await OTPVerification.deleteOne({ _id: otpRecord._id });
-            return res.status(400).json({ error: 'Too Many Attempts' });
-        }
-
-        // 3. Verify not expired
-        if (new Date() > otpRecord.expiresAt) {
-            await OTPVerification.deleteOne({ _id: otpRecord._id });
-            return res.status(400).json({ error: 'OTP Expired' });
-        }
-
-        // 4. Verify OTP matches (or use universal bypass '000000' for demo purposes)
-        const isUniversalBypass = code.trim() === '000000';
-        if (otpRecord.otp !== code.trim() && !isUniversalBypass) {
-            otpRecord.attempts += 1;
-            await otpRecord.save();
-
-            if (otpRecord.attempts >= 5) {
-                await OTPVerification.deleteOne({ _id: otpRecord._id });
-                return res.status(400).json({ error: 'Too Many Attempts' });
+            const current = await OTPVerification.findOne({ email }).lean();
+            let error = INVALID_CODE_ERROR;
+            if (current && current.codeHash && current.attempts >= OTP_MAX_ATTEMPTS) {
+                error = 'Too many attempts. Please request a new code.';
+            } else if (current && current.codeHash && current.codeExpiresAt && current.codeExpiresAt <= now) {
+                error = 'This code has expired. Please request a new one.';
             }
-
-            return res.status(400).json({ error: 'Invalid OTP' });
+            return res.status(400).json({ error });
         }
 
-        // 5. Delete OTP after success
-        await OTPVerification.deleteOne({ _id: otpRecord._id });
+        // 2. Compare against the stored HMAC (constant time)
+        if (!otpMatches(config.jwt.accessSecret, email, code, otpRecord.codeHash)) {
+            const remaining = OTP_MAX_ATTEMPTS - otpRecord.attempts;
+            return res.status(400).json({
+                error: remaining > 0
+                    ? `Incorrect code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`
+                    : 'Too many attempts. Please request a new code.'
+            });
+        }
+
+        // 3. Consume it: only one request can ever win this update.
+        const consumed = await OTPVerification.findOneAndUpdate(
+            { _id: otpRecord._id, codeHash: otpRecord.codeHash, consumedAt: null },
+            { $set: { consumedAt: now, codeHash: null } }
+        );
+        if (!consumed) {
+            return res.status(400).json({ error: INVALID_CODE_ERROR });
+        }
 
         // Check if user exists
-        let user = await User.findOne({ email: cleanEmail });
+        let user = await User.findOne({ email });
         let isNewUser = false;
 
         if (!user) {
             // Auto-create user account
             isNewUser = true;
-            const tempUsername = 'user_' + crypto.randomBytes(4).toString('hex');
-            const tempDisplayName = cleanEmail.split('@')[0];
-            
-            user = new User({
-                email: cleanEmail,
-                username: tempUsername,
-                displayName: tempDisplayName,
-                isVerified: false,
-                avatarInitials: tempDisplayName.substring(0, 2).toUpperCase()
-            });
-            await user.save();
-            console.log(`[AUTH] Auto-created user ${cleanEmail}`);
-        } else if (!user.isVerified) {
-            // User exists but has not completed profile setup
-            isNewUser = true;
+            user = await createUserForEmail(email);
+            console.log(`[AUTH] Created account for ${maskEmail(email)}`);
+        } else {
+            // User exists but may not have completed profile setup
+            isNewUser = !user.isVerified;
+            if (!user.isEmailVerified) {
+                await User.updateOne({ _id: user._id }, { $set: { isEmailVerified: true } });
+            }
         }
 
-        // Generate tokens
-        const accessToken = jwt.sign(
-            { userId: user._id, email: user.email },
-            JWT_SECRET,
-            { expiresIn: '15m' }
-        );
-
-        const refreshToken = jwt.sign(
-            { userId: user._id },
-            JWT_REFRESH_SECRET,
-            { expiresIn: '30d' }
-        );
-
-        // Store refresh token securely in HttpOnly Cookie
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
-        });
+        const accessToken = issueSession(res, config, user);
 
         res.json({
             message: 'Login successful',
             token: accessToken,
             isNewUser,
-            user: {
-                _id: user._id,
-                email: user.email,
-                username: user.username,
-                displayName: user.displayName,
-                profilePhoto: user.profilePhoto || '',
-                avatarUrl: user.avatarUrl || user.profilePhoto || '',
-                avatarInitials: user.avatarInitials,
-                bio: user.bio || '',
-                interests: user.interests || [],
-                isVerified: user.isVerified
-            }
+            user: sessionUser(user)
         });
 
     } catch (error) {
-        console.error('OTP Verification Error:', error);
-        res.status(500).json({ error: 'Failed to verify OTP' });
+        next(error);
     }
 });
 
 // Refresh Token
-router.post('/refresh', async (req, res) => {
+router.post('/refresh', async (req, res, next) => {
     try {
-        const refreshToken = getCookie(req, 'refreshToken');
+        const { config } = req.app.locals;
+        const refreshToken = getCookie(req, REFRESH_COOKIE);
         if (!refreshToken) {
             return res.status(401).json({ error: 'Refresh token not found' });
         }
 
-        let decoded;
-        try {
-            decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
-        } catch (err) {
+        const decoded = verifyRefreshToken(config, refreshToken);
+        if (!decoded) {
             return res.status(401).json({ error: 'Invalid refresh token' });
         }
 
@@ -245,58 +337,61 @@ router.post('/refresh', async (req, res) => {
             return res.status(401).json({ error: 'User not found' });
         }
 
-        const accessToken = jwt.sign(
-            { userId: user._id, email: user.email },
-            JWT_SECRET,
-            { expiresIn: '15m' }
-        );
+        if ((user.tokenVersion || 0) !== (decoded.tv || 0)) {
+            res.clearCookie(REFRESH_COOKIE, cookieOptions(config));
+            return res.status(401).json({ error: 'Session has been signed out' });
+        }
 
         res.json({
-            token: accessToken,
-            user: {
-                _id: user._id,
-                email: user.email,
-                username: user.username,
-                displayName: user.displayName,
-                profilePhoto: user.profilePhoto || '',
-                avatarUrl: user.avatarUrl || user.profilePhoto || '',
-                avatarInitials: user.avatarInitials,
-                bio: user.bio || '',
-                interests: user.interests || [],
-                isVerified: user.isVerified
-            }
+            token: signAccessToken(config, user),
+            user: sessionUser(user)
         });
 
     } catch (error) {
-        console.error('Refresh Token Error:', error);
-        res.status(500).json({ error: 'Server error' });
+        next(error);
     }
 });
 
-// Logout
-router.post('/logout', (req, res) => {
-    res.clearCookie('refreshToken', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict'
-    });
-    res.json({ message: 'Logged out successfully' });
+// Logout: revoke every refresh token issued to this account, then clear the cookie.
+// Access tokens are stateless and remain valid until they expire (15 minutes).
+router.post('/logout', async (req, res, next) => {
+    try {
+        const { config } = req.app.locals;
+        const refreshToken = getCookie(req, REFRESH_COOKIE);
+        const decoded = refreshToken ? verifyRefreshToken(config, refreshToken) : null;
+
+        if (decoded) {
+            const tv = decoded.tv || 0;
+            // Only a current (non-revoked) token may bump the version.
+            await User.updateOne(
+                { _id: decoded.userId, tokenVersion: tv === 0 ? { $in: [0, null] } : tv },
+                { $inc: { tokenVersion: 1 } }
+            );
+        }
+
+        res.clearCookie(REFRESH_COOKIE, cookieOptions(config));
+        res.json({ message: 'Logged out successfully' });
+    } catch (error) {
+        next(error);
+    }
 });
 
 // Get current user
-router.get('/me', auth, async (req, res) => {
+router.get('/me', auth, async (req, res, next) => {
     try {
+        if (!isObjectId(req.user.userId)) return res.status(401).json({ error: 'Token is not valid' });
+
         const user = await User.findById(req.user.userId)
-            .select('-otpCode -otpExpires')
+            .select('-otpCode -otpExpires -tokenVersion')
             .populate('followers', 'username displayName avatarInitials')
             .populate('following', 'username displayName avatarInitials')
             .populate('showcaseCabinet')
             .populate('communities');
-            
+
         if (!user) return res.status(404).json({ error: 'User not found' });
-        
-        const achievements = await getDynamicAchievements(user._id);
-        
+
+        const achievements = await getDynamicAchievements(user._id, user);
+
         res.json({
             _id: user._id,
             email: user.email,
@@ -315,9 +410,9 @@ router.get('/me', auth, async (req, res) => {
             achievements
         });
     } catch (err) {
-        console.error('GET me error:', err);
-        res.status(500).send('Server Error');
+        next(err);
     }
 });
 
 module.exports = router;
+module.exports.getCookie = getCookie;

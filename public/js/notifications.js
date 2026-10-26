@@ -119,7 +119,7 @@ class NotificationsApp {
 
     async markAllAsRead() {
         try {
-            await api.put('/notifications/read-all');
+            await api.post('/notifications/mark-all-read', {});
             this.notifications.forEach(n => n.read = true);
             this.updateBadges();
             this.renderFeed();

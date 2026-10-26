@@ -2,13 +2,17 @@ const express = require('express');
 const router = express.Router();
 const Notification = require('../models/Notification');
 const auth = require('../middleware/auth');
+const { validateIdParam } = require('../lib/validation');
 
-// Get all notifications for logged-in user
+router.param('id', validateIdParam);
+
+// Get the most recent notifications for the logged-in user
 router.get('/', auth, async (req, res) => {
     try {
         const notifications = await Notification.find({ recipient: req.user.userId })
             .populate('sender', 'username displayName avatarInitials avatarUrl')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .limit(100);
         res.json(notifications);
     } catch (error) {
         console.error('Error fetching notifications:', error);
@@ -22,7 +26,7 @@ router.put('/:id/read', auth, async (req, res) => {
         const notification = await Notification.findOneAndUpdate(
             { _id: req.params.id, recipient: req.user.userId },
             { read: true },
-            { new: true }
+            { returnDocument: 'after' }
         );
         if (!notification) return res.status(404).json({ error: 'Notification not found' });
         res.json(notification);
