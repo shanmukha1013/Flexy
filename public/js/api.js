@@ -3,9 +3,36 @@
 
 const PRODUCTION_BACKEND_URL = 'https://flexy-backend-pgw7.onrender.com';
 
-const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:3001/api'
-    : `${PRODUCTION_BACKEND_URL}/api`;
+const IS_LOCAL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const BACKEND_ORIGIN = IS_LOCAL ? `http://${window.location.hostname}:3001` : PRODUCTION_BACKEND_URL;
+const API_BASE = `${BACKEND_ORIGIN}/api`;
+
+// Loads the Socket.IO client from the backend itself (always version-matched).
+// A relative "/socket.io/socket.io.js" only works when the page is served by
+// Express, not from Vercel.
+let socketIoPromise = null;
+function loadSocketIo() {
+    if (typeof io !== 'undefined') return Promise.resolve(io);
+    if (!socketIoPromise) {
+        socketIoPromise = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = `${BACKEND_ORIGIN}/socket.io/socket.io.js`;
+            script.onload = () => resolve(window.io);
+            script.onerror = () => { socketIoPromise = null; reject(new Error('Real-time updates are unavailable')); };
+            document.head.appendChild(script);
+        });
+    }
+    return socketIoPromise;
+}
+
+async function connectSocket() {
+    const ioClient = await loadSocketIo();
+    // auth as a function is re-read on every reconnect, so a refreshed access
+    // token is picked up automatically.
+    return ioClient(BACKEND_ORIGIN, {
+        auth: (cb) => cb({ token: localStorage.getItem('flexy_token') || '' })
+    });
+}
 
 class ApiClient {
     constructor() {
@@ -49,9 +76,12 @@ class ApiClient {
         this.isRefreshing = true;
 
         try {
+            // The refresh token lives in an HttpOnly cookie on the API origin,
+            // so the request must include credentials.
             const res = await fetch(`${API_BASE}/auth/refresh`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
             });
             if (!res.ok) {
                 throw new Error('Refresh failed');
@@ -75,62 +105,54 @@ class ApiClient {
         }
     }
 
-    async get(endpoint) {
-        let res = await fetch(`${API_BASE}${endpoint}`, { headers: this.getHeaders() });
-        
+    // Turns an error response into an Error carrying the server's message
+    // ({ "error": "..." }) instead of the raw response body.
+    async toError(res) {
+        let message = `Request failed (${res.status})`;
+        try {
+            const text = await res.text();
+            try {
+                const data = JSON.parse(text);
+                message = data.error || data.message || message;
+            } catch (e) {
+                if (text && text.length < 200) message = text;
+            }
+        } catch (e) { /* keep default message */ }
+        const error = new Error(message);
+        error.status = res.status;
+        return error;
+    }
+
+    async request(method, endpoint, data) {
+        const send = () => fetch(`${API_BASE}${endpoint}`, {
+            method,
+            headers: this.getHeaders(),
+            body: data === undefined ? undefined : JSON.stringify(data)
+        });
+
+        let res = await send();
+
         if (res.status === 401) {
             const newToken = await this.refreshToken();
             if (newToken) {
-                res = await fetch(`${API_BASE}${endpoint}`, { headers: this.getHeaders() });
+                res = await send();
             }
         }
-        
-        if (!res.ok) throw new Error(await res.text());
+
+        if (!res.ok) throw await this.toError(res);
         return res.json();
     }
 
-    async post(endpoint, data) {
-        let res = await fetch(`${API_BASE}${endpoint}`, {
-            method: 'POST',
-            headers: this.getHeaders(),
-            body: JSON.stringify(data)
-        });
-        
-        if (res.status === 401) {
-            const newToken = await this.refreshToken();
-            if (newToken) {
-                res = await fetch(`${API_BASE}${endpoint}`, {
-                    method: 'POST',
-                    headers: this.getHeaders(),
-                    body: JSON.stringify(data)
-                });
-            }
-        }
-        
-        if (!res.ok) throw new Error(await res.text());
-        return res.json();
+    get(endpoint) {
+        return this.request('GET', endpoint);
     }
 
-    async put(endpoint, data) {
-        let res = await fetch(`${API_BASE}${endpoint}`, {
-            method: 'PUT',
-            headers: this.getHeaders(),
-            body: JSON.stringify(data)
-        });
-        
-        if (res.status === 401) {
-            const newToken = await this.refreshToken();
-            if (newToken) {
-                res = await fetch(`${API_BASE}${endpoint}`, {
-                    method: 'PUT',
-                    headers: this.getHeaders(),
-                    body: JSON.stringify(data)
-                });
-            }
-        }
-        
-        if (!res.ok) throw new Error(await res.text());
-        return res.json();
+    post(endpoint, data) {
+        return this.request('POST', endpoint, data === undefined ? {} : data);
+    }
+
+    put(endpoint, data) {
+        return this.request('PUT', endpoint, data === undefined ? {} : data);
     }
 }
 
@@ -559,53 +581,59 @@ async function loadLiveAuction() {
             </div>
         </div>`;
 
-        // Socket.IO Integration
-        if (typeof io !== 'undefined') {
-            const socketUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-                ? `http://${window.location.hostname}:3001`
-                : PRODUCTION_BACKEND_URL;
-            const socket = io(socketUrl);
-            socket.emit('join_auction', auctionId);
-            
-            socket.on('new_bid', (data) => {
-                const el = document.getElementById('live-bid-amount');
-                if (el) {
-                    el.innerText = api.formatCurrency(data.amount);
-                    el.style.animation = 'pulse 0.5s ease';
-                    setTimeout(() => el.style.animation = '', 500);
-                }
-            });
+        const showBid = (amount) => {
+            a.currentBid = amount;
+            const el = document.getElementById('live-bid-amount');
+            if (el) {
+                el.innerText = api.formatCurrency(amount);
+                el.style.animation = 'pulse 0.5s ease';
+                setTimeout(() => el.style.animation = '', 500);
+            }
+        };
 
-            document.getElementById('place-bid-btn').addEventListener('click', async () => {
-                const amount = parseInt(document.getElementById('bid-input').value);
-                const status = document.getElementById('bid-status');
-                if (!amount || amount <= a.currentBid) {
-                    status.innerText = "Bid must be higher than current bid.";
-                    return;
-                }
-                
-                try {
-                    status.innerText = "Processing...";
-                    // Requires user to be logged in to have an ID, we'll mock an ID if unauthenticated for testing
-                    let user = JSON.parse(localStorage.getItem('flexy_user'));
-                    if (!user || !user._id) {
-                        status.innerText = "Please login to place a bid.";
-                        status.style.color = "var(--danger)";
-                        return;
-                    }
-                    let userId = user._id;
-                    
-                    const res = await api.post('/auctions/' + auctionId + '/bid', { bidderId: userId, amount });
-                    status.innerText = "Bid placed successfully!";
-                    status.style.color = "var(--primary)";
-                    
-                    socket.emit('place_bid', { auctionId, amount });
-                } catch(err) {
-                    status.innerText = err.message || "Failed to place bid.";
-                    status.style.color = "var(--danger)";
-                }
-            });
-        }
+        // Bidding works over REST and must not depend on the socket client
+        // loading (it previously did, which left the button dead on Vercel).
+        const bidBtn = document.getElementById('place-bid-btn');
+        bidBtn.addEventListener('click', async () => {
+            const amount = parseInt(document.getElementById('bid-input').value, 10);
+            const status = document.getElementById('bid-status');
+            if (!amount || amount <= a.currentBid) {
+                status.innerText = "Bid must be higher than current bid.";
+                status.style.color = "var(--danger)";
+                return;
+            }
+
+            const user = JSON.parse(localStorage.getItem('flexy_user') || 'null');
+            if (!user || !user._id || !api.token) {
+                status.innerText = "Please login to place a bid.";
+                status.style.color = "var(--danger)";
+                return;
+            }
+
+            bidBtn.disabled = true;
+            try {
+                status.innerText = "Processing...";
+                const res = await api.post('/auctions/' + auctionId + '/bid', { amount });
+                showBid(res.currentBid);
+                status.innerText = "Bid placed successfully!";
+                status.style.color = "var(--primary)";
+            } catch(err) {
+                status.innerText = err.message || "Failed to place bid.";
+                status.style.color = "var(--danger)";
+            } finally {
+                bidBtn.disabled = false;
+            }
+        });
+
+        // Live updates: the server broadcasts every accepted bid to this room.
+        connectSocket()
+            .then(socket => {
+                socket.emit('join_auction', auctionId);
+                socket.on('new_bid', (data) => {
+                    if (data && data.auctionId === auctionId) showBid(data.amount);
+                });
+            })
+            .catch(err => console.warn(err.message));
     } catch(e) {
         container.innerHTML = "<p>Error loading the live auction.</p>";
     }
@@ -1350,7 +1378,7 @@ window.triggerCreateGroup = async function() {
     if (!description || !description.trim()) return;
 
     try {
-        await api.post(`/communities/${communityId}/groups`, { name: name.trim(), description: description.trim() });
+        await api.post('/groups', { name: name.trim(), description: description.trim(), communityId });
         notify("Sub-group created successfully!", 'success');
         initCommunityPage();
     } catch (err) {

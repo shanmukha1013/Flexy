@@ -42,4 +42,7 @@ const PostSchema = new mongoose.Schema({
     }]
 }, { timestamps: true });
 
+PostSchema.index({ community: 1, createdAt: -1 });
+PostSchema.index({ group: 1, createdAt: -1 });
+
 module.exports = mongoose.model('Post', PostSchema);

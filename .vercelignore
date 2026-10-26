@@ -4,3 +4,8 @@ middleware/
 server.js
 seed.js
 .env
+config/
+lib/
+scripts/
+test/
+app.js

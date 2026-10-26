@@ -5,19 +5,37 @@ const Community = require('../models/Community');
 const GroupMember = require('../models/GroupMember');
 const CommunityMember = require('../models/CommunityMember');
 const auth = require('../middleware/auth');
+const { HttpError, validateIdParam, requireObjectId, cleanText } = require('../lib/validation');
+
+router.param('id', validateIdParam);
+router.param('userId', validateIdParam);
+
+// Joining a group inside a private community would otherwise grant community
+// membership without the creator's approval.
+async function assertCommunityAccess(community, userId) {
+    if (!community || community.privacy !== 'private') return;
+    if (community.creator.toString() === userId) return;
+    if (await CommunityMember.exists({ community: community._id, user: userId })) return;
+    throw new HttpError(403, 'This community is private. Request to join it first.');
+}
 
 // Create Group
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, async (req, res, next) => {
     try {
-        const { name, description, communityId, privacy } = req.body;
+        const body = req.body || {};
+        const { communityId, privacy } = body;
         const userId = req.user.userId;
+        const name = cleanText(body.name, 'Name', { max: 60, required: true });
+        const description = cleanText(body.description, 'Description', { max: 1000, required: true });
 
         let community = null;
         if (communityId) {
+            requireObjectId(communityId, 'communityId');
             community = await Community.findById(communityId);
             if (!community) {
                 return res.status(404).json({ error: 'Community not found' });
             }
+            await assertCommunityAccess(community, userId);
         }
 
         const group = new Group({
@@ -57,16 +75,15 @@ router.post('/', auth, async (req, res) => {
 
         res.status(201).json(group);
     } catch (error) {
-        console.error('Error creating group:', error);
-        res.status(500).json({ error: 'Server error' });
+        next(error);
     }
 });
 
 // Get All Groups (public)
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
     try {
         const filter = {};
-        if (req.query.communityId) filter.community = req.query.communityId;
+        if (req.query.communityId) filter.community = requireObjectId(req.query.communityId, 'communityId');
         if (req.query.standalone === 'true') filter.community = { $exists: false };
         
         const groups = await Group.find(filter)
@@ -75,18 +92,20 @@ router.get('/', async (req, res) => {
             .sort({ memberCount: -1 });
         res.json(groups);
     } catch (error) {
-        console.error('Error fetching groups:', error);
-        res.status(500).json({ error: 'Server error' });
+        next(error);
     }
 });
 
 // Join Group
-router.post('/:id/join', auth, async (req, res) => {
+router.post('/:id/join', auth, async (req, res, next) => {
     try {
         const group = await Group.findById(req.params.id);
         if (!group) return res.status(404).json({ error: 'Group not found' });
 
         const userId = req.user.userId;
+        if (group.community) {
+            await assertCommunityAccess(await Community.findById(group.community).select('privacy creator'), userId);
+        }
         
         const existingMember = await GroupMember.findOne({ group: group._id, user: userId });
         if (!existingMember) {
@@ -117,8 +136,7 @@ router.post('/:id/join', auth, async (req, res) => {
         }
         res.json({ message: 'Joined group successfully', group });
     } catch (error) {
-        console.error('Error joining group:', error);
-        res.status(500).json({ error: 'Server error' });
+        next(error);
     }
 });
 
@@ -143,9 +161,10 @@ router.post('/:id/leave', auth, async (req, res) => {
             
             const stillInCommunity = await GroupMember.findOne({ group: { $in: otherGroupIds }, user: userId });
             
-            // If not in any other group, they leave the community
+            // If not in any other group, they leave the community (the owner's
+            // membership is never removed this way)
             if (!stillInCommunity) {
-                const delComm = await CommunityMember.findOneAndDelete({ community: group.community, user: userId });
+                const delComm = await CommunityMember.findOneAndDelete({ community: group.community, user: userId, role: { $ne: 'owner' } });
                 if (delComm) {
                     await Community.findByIdAndUpdate(group.community, {
                         $inc: { memberCount: -1 }
@@ -175,11 +194,14 @@ router.get('/:id', auth, async (req, res) => {
             .populate('user', 'username displayName avatarInitials avatarUrl reputation');
             
         const groupObj = group.toObject();
-        groupObj.membersList = members.map(m => ({
-            ...m.user.toObject(),
-            role: m.role,
-            joinedAt: m.joinedAt
-        }));
+        // Skip memberships whose user account no longer exists.
+        groupObj.membersList = members
+            .filter(m => m.user)
+            .map(m => ({
+                ...m.user.toObject(),
+                role: m.role,
+                joinedAt: m.joinedAt
+            }));
 
         res.json(groupObj);
     } catch (error) {

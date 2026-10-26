@@ -34,4 +34,7 @@ const AuctionSchema = new mongoose.Schema({
     watchers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
 }, { timestamps: true });
 
+AuctionSchema.index({ status: 1, endTime: 1 });
+AuctionSchema.index({ seller: 1, createdAt: -1 });
+
 module.exports = mongoose.model('Auction', AuctionSchema);

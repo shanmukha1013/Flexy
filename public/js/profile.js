@@ -3,8 +3,10 @@
 class ProfileApp {
     constructor() {
         this.currentUser = JSON.parse(localStorage.getItem('flexy_user') || 'null');
+        // Users stored by the auth flow carry `_id`; older cached objects may use `id`.
+        this.myId = this.currentUser ? (this.currentUser._id || this.currentUser.id) : null;
         this.targetUserId = new URLSearchParams(window.location.search).get('id');
-        this.isMyProfile = !this.targetUserId || (this.currentUser && this.targetUserId === this.currentUser.id);
+        this.isMyProfile = !this.targetUserId || (this.currentUser && this.targetUserId === this.myId);
         this.profileData = null;
         
         this.init();
@@ -17,7 +19,7 @@ class ProfileApp {
                 return;
             }
 
-            const idToFetch = this.isMyProfile ? (this.currentUser.id || this.currentUser._id) : this.targetUserId;
+            const idToFetch = this.isMyProfile ? this.myId : this.targetUserId;
             this.profileData = await api.get(`/users/${idToFetch}`);
 
             document.getElementById('loading-state').style.display = 'none';
@@ -66,7 +68,7 @@ class ProfileApp {
             `;
         } else {
             const isFollowing = this.currentUser && followers.some(f => 
-                (typeof f === 'string' ? f : f._id) === this.currentUser.id
+                (typeof f === 'string' ? f : f._id) === this.myId
             );
 
             actionsContainer.innerHTML = `
@@ -85,7 +87,7 @@ class ProfileApp {
         }
         try {
             const followers = this.profileData.followers || [];
-            const isFollowing = followers.some(f => (typeof f === 'string' ? f : f._id) === this.currentUser.id);
+            const isFollowing = followers.some(f => (typeof f === 'string' ? f : f._id) === this.myId);
             const endpoint = isFollowing ? 'unfollow' : 'follow';
             
             await api.post(`/users/${this.profileData._id}/${endpoint}`);
@@ -117,16 +119,17 @@ class ProfileApp {
             };
             
             try {
-                const res = await api.put(`/users/${this.currentUser.id}`, data);
+                const res = await api.put(`/users/${this.myId}`, data);
                 notify('Profile updated!', 'success');
-                
-                // Update local storage user just in case
-                this.currentUser.displayName = res.user.displayName;
-                this.currentUser.username = res.user.username;
+
+                // The API returns the updated user document
+                const updated = res.user || res;
+                this.currentUser.displayName = updated.displayName;
+                this.currentUser.username = updated.username;
                 localStorage.setItem('flexy_user', JSON.stringify(this.currentUser));
                 
                 document.getElementById('edit-profile-modal').style.display = 'none';
-                this.profileData = await api.get(`/users/${this.currentUser.id}`);
+                this.profileData = await api.get(`/users/${this.myId}`);
                 this.renderHeader();
             } catch (err) {
                 notify(err.message, 'error');
@@ -178,8 +181,7 @@ class ProfileApp {
         // Load Auctions
         const auctionsGrid = document.getElementById('content-auctions');
         try {
-            const auctions = await api.get('/auctions'); // Or a specific user auctions endpoint if available
-            const myAuctions = auctions.filter(a => a.seller && a.seller._id === this.profileData._id);
+            const myAuctions = await api.get(`/auctions?seller=${this.profileData._id}`);
             
             if (myAuctions.length === 0) {
                 auctionsGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 3rem;">No active auctions.</div>`;

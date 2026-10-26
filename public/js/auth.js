@@ -121,7 +121,6 @@ class Auth {
             this.showOTPModal(email);
         } catch (error) {
             console.error('Login error:', error);
-            alert("DEBUG ERROR: " + error.message);
             this.showNotification(error.message || 'Failed to send OTP. Please try again.', 'error');
         } finally {
             if (submitBtn) {
@@ -138,7 +137,7 @@ class Auth {
             body: JSON.stringify({ email })
         });
 
-        const data = await response.json();
+        const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
             throw new Error(data.error || 'Failed to send OTP email');
@@ -245,9 +244,12 @@ class Auth {
     }
 
     async verifyEmailOTP(otp, email) {
+        // credentials: 'include' lets the browser store the HttpOnly refresh
+        // cookie set by the API, which lives on a different origin in production.
         const response = await fetch(`${this.apiBase}/api/auth/verify-otp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ email, code: otp })
         });
 
@@ -303,7 +305,7 @@ class Auth {
 
     async logout() {
         try {
-            await fetch(`${this.apiBase}/api/auth/logout`, { method: 'POST' });
+            await fetch(`${this.apiBase}/api/auth/logout`, { method: 'POST', credentials: 'include' });
         } catch (e) {
             console.error('Logout error:', e);
         }

@@ -7,6 +7,22 @@ const CommunityMember = require('../models/CommunityMember');
 const GroupMember = require('../models/GroupMember');
 const Notification = require('../models/Notification');
 const auth = require('../middleware/auth');
+const { validateIdParam, requireObjectId, cleanText } = require('../lib/validation');
+
+router.param('id', validateIdParam);
+router.param('userId', validateIdParam);
+
+// Members whose user account no longer exists are skipped instead of crashing
+// the whole page with a TypeError.
+function toMembersList(members) {
+    return members
+        .filter(m => m.user)
+        .map(m => ({
+            ...m.user.toObject(),
+            role: m.role,
+            joinedAt: m.joinedAt
+        }));
+}
 
 // Get all communities
 router.get('/', async (req, res) => {
@@ -21,15 +37,16 @@ router.get('/', async (req, res) => {
 });
 
 // Create community
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, async (req, res, next) => {
     try {
-        const { name, description, icon, privacy } = req.body;
+        const body = req.body || {};
+        const { icon, privacy } = body;
         const creatorId = req.user.userId;
-        
+
         const community = new Community({
-            name,
-            description,
-            icon: icon || '🏛️',
+            name: cleanText(body.name, 'Name', { max: 60, required: true }),
+            description: cleanText(body.description, 'Description', { max: 1000, required: true }),
+            icon: cleanText(icon, 'Icon', { max: 16 }) || '🏛️',
             privacy: privacy || 'public',
             creator: creatorId,
             memberCount: 1,
@@ -46,8 +63,8 @@ router.post('/', auth, async (req, res) => {
 
         res.json(community);
     } catch (error) {
-        console.error('Error creating community:', error);
-        res.status(500).json({ error: 'Server error' });
+        if (error.code === 11000) return res.status(409).json({ error: 'A community with that name already exists' });
+        next(error);
     }
 });
 
@@ -222,7 +239,7 @@ router.get('/:id/groups', auth, async (req, res) => {
 });
 
 // Get single community details (includes members via aggregation/lookup)
-router.get('/:id', async (req, res) => {
+router.get('/:id', auth.optional, async (req, res) => {
     try {
         const community = await Community.findById(req.params.id)
             .populate('creator', 'username displayName avatarInitials avatarUrl')
@@ -236,11 +253,16 @@ router.get('/:id', async (req, res) => {
             
         // Construct composite object
         const communityObj = community.toObject();
-        communityObj.membersList = members.map(m => ({
-            ...m.user.toObject(),
-            role: m.role,
-            joinedAt: m.joinedAt
-        }));
+        communityObj.membersList = toMembersList(members);
+
+        // Only the creator sees who is waiting for approval; everyone else only
+        // learns whether their own request is pending.
+        const viewerId = req.user && req.user.userId;
+        const creatorId = community.creator && (community.creator._id || community.creator).toString();
+        if (viewerId !== creatorId) {
+            communityObj.pendingRequests = (communityObj.pendingRequests || [])
+                .filter(u => u && String(u._id || u) === viewerId);
+        }
 
         res.json(communityObj);
     } catch (error) {
@@ -268,17 +290,29 @@ router.get('/user/:userId', auth, async (req, res) => {
 });
 
 // Add existing group to community
-router.post('/:id/add-group', auth, async (req, res) => {
+router.post('/:id/add-group', auth, async (req, res, next) => {
     try {
         const community = await Community.findById(req.params.id);
         if (!community) return res.status(404).json({ error: 'Community not found' });
-        
-        const { groupId } = req.body;
+
+        const { groupId } = req.body || {};
         if (!groupId) return res.status(400).json({ error: 'Group ID is required' });
+        requireObjectId(groupId, 'groupId');
 
         const group = await Group.findById(groupId);
         if (!group) return res.status(404).json({ error: 'Group not found' });
-        
+
+        // Only the group's creator may move it, and only into a community they belong to.
+        const userId = req.user.userId;
+        if (group.creator.toString() !== userId) {
+            return res.status(403).json({ error: 'Only the group creator can add it to a community' });
+        }
+        const isCommunityMember = community.creator.toString() === userId ||
+            await CommunityMember.exists({ community: community._id, user: userId });
+        if (!isCommunityMember) {
+            return res.status(403).json({ error: 'Join this community before adding a group to it' });
+        }
+
         if (group.community) {
             return res.status(400).json({ error: 'Group already belongs to a community' });
         }
@@ -291,8 +325,7 @@ router.post('/:id/add-group', auth, async (req, res) => {
 
         res.json({ message: 'Group added to community successfully', group });
     } catch (error) {
-        console.error('Error adding group to community:', error);
-        res.status(500).json({ error: 'Server error' });
+        next(error);
     }
 });
 
