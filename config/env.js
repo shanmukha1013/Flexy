@@ -27,7 +27,9 @@ const MIN_SECRET_LENGTH = 32;
 const DEFAULT_FRONTEND_ORIGINS = ['https://flexy-peach.vercel.app'];
 const DEFAULT_LOCAL_ORIGINS = ['http://localhost:3001', 'http://127.0.0.1:3001'];
 const DEFAULT_LOCAL_MONGODB_URI = 'mongodb://127.0.0.1:27017/flexy';
-const DEFAULT_EMAIL_FROM = 'Flexy <onboarding@resend.dev>';
+// Settings of the retired email (OTP) sign-in. They are ignored now; startup
+// names any that are still set so they can be removed. Values are never printed.
+const OBSOLETE_VARIABLES = ['RESEND_API_KEY', 'EMAIL_FROM', 'EMAIL_TRANSPORT'];
 
 class ConfigError extends Error {
     constructor(errors) {
@@ -107,22 +109,8 @@ function loadConfig(env = process.env) {
         (isProduction ? errors : warnings).push('JWT_SECRET and JWT_REFRESH_SECRET must be different values.');
     }
 
-    // Email delivery. "console" prints codes to the server log and exists only
-    // so the login flow can be exercised locally without a Resend account.
-    const emailTransport = (env.EMAIL_TRANSPORT || 'resend').toLowerCase();
-    if (!['resend', 'console'].includes(emailTransport)) {
-        errors.push(`EMAIL_TRANSPORT must be "resend" or "console" (got "${env.EMAIL_TRANSPORT}").`);
-    }
-    if (emailTransport === 'console' && isProduction) {
-        errors.push('EMAIL_TRANSPORT=console is not allowed in production; it would write login codes to the logs.');
-    }
-    const resendApiKey = env.RESEND_API_KEY || '';
-    const emailFrom = env.EMAIL_FROM || DEFAULT_EMAIL_FROM;
-    if (emailTransport === 'resend' && !resendApiKey) {
-        warnings.push('RESEND_API_KEY is not set; OTP login is unavailable until it is configured (requests will return 503).');
-    }
-    if (isProduction && emailTransport === 'resend' && /@resend\.dev>?$/i.test(emailFrom)) {
-        warnings.push('EMAIL_FROM uses the shared resend.dev sender, which only delivers to the Resend account owner. Verify a domain in Resend and set EMAIL_FROM to send codes to other users.');
+    for (const name of OBSOLETE_VARIABLES) {
+        if (env[name]) warnings.push(`${name} is no longer used (email sign-in was replaced by passwords) and can be removed.`);
     }
 
     const corsOrigins = env.CORS_ORIGINS
@@ -149,11 +137,6 @@ function loadConfig(env = process.env) {
             secure: isProduction,
             sameSite: isProduction ? 'none' : 'lax'
         },
-        email: {
-            transport: emailTransport,
-            resendApiKey,
-            from: emailFrom
-        },
         errors,
         warnings
     };
@@ -169,5 +152,6 @@ module.exports = {
     assertValidConfig,
     ConfigError,
     KNOWN_PLACEHOLDER_SECRETS,
-    MIN_SECRET_LENGTH
+    MIN_SECRET_LENGTH,
+    OBSOLETE_VARIABLES
 };

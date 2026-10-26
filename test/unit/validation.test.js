@@ -1,46 +1,6 @@
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
-const otp = require('../../lib/otp');
 const v = require('../../lib/validation');
-
-const SECRET = 'unit-test-secret-unit-test-secret-1234';
-
-describe('OTP helpers', () => {
-    test('codes are always six digits, including leading zeros', () => {
-        for (let i = 0; i < 2000; i++) {
-            const code = otp.generateOtp();
-            assert.match(code, /^\d{6}$/);
-        }
-    });
-
-    test('codes are not constant', () => {
-        const codes = new Set(Array.from({ length: 50 }, () => otp.generateOtp()));
-        assert.ok(codes.size > 40);
-    });
-
-    test('the stored hash never contains the code and is bound to the email', () => {
-        const hash = otp.hashOtp(SECRET, 'a@x.test', '123456');
-        assert.ok(!hash.includes('123456'));
-        assert.equal(otp.otpMatches(SECRET, 'a@x.test', '123456', hash), true);
-        assert.equal(otp.otpMatches(SECRET, 'b@x.test', '123456', hash), false);
-        assert.equal(otp.otpMatches(SECRET, 'a@x.test', '123457', hash), false);
-        assert.equal(otp.otpMatches('another-secret-another-secret-123', 'a@x.test', '123456', hash), false);
-    });
-
-    test('missing or malformed hashes never match', () => {
-        assert.equal(otp.otpMatches(SECRET, 'a@x.test', '123456', null), false);
-        assert.equal(otp.otpMatches(SECRET, 'a@x.test', '123456', ''), false);
-        assert.equal(otp.otpMatches(SECRET, 'a@x.test', '123456', 'abcd'), false);
-    });
-
-    test('isWellFormedOtp accepts only six-digit strings', () => {
-        assert.equal(otp.isWellFormedOtp('000123'), true);
-        assert.equal(otp.isWellFormedOtp('12345'), false);
-        assert.equal(otp.isWellFormedOtp('1234567'), false);
-        assert.equal(otp.isWellFormedOtp(123456), false);
-        assert.equal(otp.isWellFormedOtp('12a456'), false);
-    });
-});
 
 describe('validation helpers', () => {
     test('normalizeEmail lowercases, trims and rejects junk', () => {
@@ -94,5 +54,61 @@ describe('validation helpers', () => {
         const re = new RegExp(v.escapeRegex('a.b*(c)'));
         assert.equal(re.test('a.b*(c)'), true);
         assert.equal(re.test('axbbbc'), false);
+    });
+});
+
+describe('username rules', () => {
+    test('normalizeUsername trims, drops a leading @ and lowercases', () => {
+        assert.equal(v.normalizeUsername('  @Shan_Collects '), 'shan_collects');
+        assert.equal(v.normalizeUsername({ $ne: '' }), '');
+        assert.equal(v.normalizeUsername(undefined), '');
+    });
+
+    test('accepts letters, numbers, underscores and inner periods', () => {
+        for (const ok of ['abc', 'shan_collects', 'shan.reddy', 'a1_b2.c3', 'x'.repeat(30)]) {
+            assert.equal(v.usernameProblem(ok), null, ok);
+        }
+    });
+
+    test('rejects bad lengths, characters and period placement', () => {
+        for (const bad of ['', 'ab', 'x'.repeat(31), 'a b', 'a-b', 'emoji😀', '.abc', 'abc.', 'a..b', 'a@b', '<script>']) {
+            assert.ok(v.usernameProblem(bad), bad);
+        }
+    });
+
+    test('rejects handles that could impersonate the platform', () => {
+        assert.match(v.usernameProblem('admin'), /reserved/);
+        assert.match(v.usernameProblem('flexy'), /reserved/);
+        assert.match(v.usernameProblem('support'), /reserved/);
+    });
+});
+
+describe('phone numbers', () => {
+    test('normalizePhone keeps a leading + and the digits', () => {
+        assert.equal(v.normalizePhone('+91 98765 43210'), '+919876543210');
+        assert.equal(v.normalizePhone('(987) 654-3210'), '9876543210');
+        assert.equal(v.normalizePhone('98765.43210'), '9876543210');
+    });
+
+    test('normalizePhone rejects letters, too few or too many digits and non-strings', () => {
+        for (const bad of ['', 'call me', '12345', '+1234567890123456', '98765abc10', '++919876543210', 9876543210, null]) {
+            assert.equal(v.normalizePhone(bad), null, String(bad));
+        }
+    });
+});
+
+describe('login identifiers', () => {
+    test('an identifier with @ inside is an email; otherwise a username', () => {
+        assert.deepEqual(v.parseLoginIdentifier(' Shan@Example.COM '), { email: 'shan@example.com' });
+        assert.deepEqual(v.parseLoginIdentifier(' @Shan_Collects '), { username: 'shan_collects' });
+        assert.deepEqual(v.parseLoginIdentifier('shan'), { username: 'shan' });
+    });
+
+    test('empty, malformed and non-string identifiers are rejected', () => {
+        assert.equal(v.parseLoginIdentifier(''), null);
+        assert.equal(v.parseLoginIdentifier('   '), null);
+        assert.equal(v.parseLoginIdentifier('broken@'), null);
+        assert.equal(v.parseLoginIdentifier({ $ne: null }), null);
+        assert.equal(v.parseLoginIdentifier('x'.repeat(300)), null);
     });
 });

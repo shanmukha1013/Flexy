@@ -1,134 +1,92 @@
-// auth.js - Email OTP sign-in (login.html) plus session helpers used by other pages.
-// The Resend API key lives server-side; this file only talks to the Flexy API.
+// auth.js - Log-in, sign-up and password pages, plus the session helpers they
+// share with the profile setup and settings pages (window.FlexyAuth).
+//
+// Sessions: the API returns a short-lived access token (kept in localStorage
+// and sent as a Bearer header) and sets a 30-day HttpOnly refresh cookie that
+// scripts cannot read. Passwords are only ever sent to the API; nothing about
+// them is stored in the browser.
 
-const EMAIL_PATTERN = /^[^\s@<>"'()]+@[^\s@<>"'()]+\.[^\s@<>"'()]+$/;
-// sessionStorage record of the code currently awaiting entry, so a page refresh
-// returns the user to the code screen with accurate timers.
-const PENDING_OTP_KEY = 'flexy_pending_otp';
+(function () {
+    'use strict';
 
-// Access tokens are JWTs. Anything else in storage (for example the fake
-// "token_user_..." values written by the retired demo login) is not a session.
-function decodeTokenPayload(token) {
-    if (typeof token !== 'string') return null;
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    try {
-        return JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
-    } catch (e) {
-        return null;
-    }
-}
+    const PRODUCTION_BACKEND_URL = 'https://flexy-backend-pgw7.onrender.com';
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const API = `${isLocal ? `http://${window.location.hostname}:3001` : PRODUCTION_BACKEND_URL}/api`;
+    const TOKEN_KEY = 'flexy_token';
+    const USER_KEY = 'flexy_user';
 
-function formatSeconds(total) {
-    const m = Math.floor(total / 60);
-    const s = total % 60;
-    return `${m}:${s < 10 ? '0' + s : s}`;
-}
+    const SERVER_TROUBLE = 'Flexy is having trouble right now. Please try again shortly.';
+    const FIX_FIELDS = 'Please fix the highlighted fields.';
 
-class Auth {
-    constructor() {
-        this.currentUser = null;
-        this.isLoggedIn = false;
-        this.isSending = false;
-        this.isVerifying = false;
-        this.pending = null;
-        // Codes sent during this visit, by email, so re-entering an address
-        // whose code is still valid goes back to the code screen.
-        this.recentSends = {};
-        this._timer = null;
-        // API base: the Express server locally, the Render backend in production
-        const PRODUCTION_BACKEND_URL = 'https://flexy-backend-pgw7.onrender.com';
-        this.apiBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-            ? `http://${window.location.hostname}:3001`
-            : PRODUCTION_BACKEND_URL;
-        this.init();
-    }
+    // The server's rules (lib/validation.js, lib/passwords.js), repeated here
+    // for instant feedback. The server checks everything again.
+    const EMAIL_RE = /^[^\s@<>"'()]+@[^\s@<>"'()]+\.[^\s@<>"'()]+$/;
+    const USERNAME_RE = /^(?!\.)(?!.*\.\.)(?!.*\.$)[a-z0-9._]{3,30}$/;
+    const PASSWORD_MIN = 8;
+    const PASSWORD_MAX = 128;
 
-    init() {
-        this.loadUser();
-        if (!document.getElementById('login-form')) return;
+    // ---------- Session ----------
 
-        this.setupEventListeners();
-        this.restoreSession();
-    }
-
-    // ---------- Session state ----------
-
-    loadUser() {
-        const userData = localStorage.getItem('flexy_user');
-        const token = localStorage.getItem('flexy_token');
-        if (!userData && !token) return;
-
-        if (!decodeTokenPayload(token)) {
-            this.clearSession();
-            return;
-        }
+    // Access tokens are JWTs. Anything else in storage (for example the fake
+    // "token_user_..." values written by the retired demo login) is not a session.
+    function decodeTokenPayload(token) {
+        if (typeof token !== 'string') return null;
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
         try {
-            this.currentUser = JSON.parse(userData);
-            this.isLoggedIn = Boolean(this.currentUser);
+            return JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
         } catch (e) {
-            this.clearSession();
+            return null;
         }
     }
 
-    clearSession() {
-        this.currentUser = null;
-        this.isLoggedIn = false;
-        localStorage.removeItem('flexy_user');
-        localStorage.removeItem('flexy_token');
-    }
-
-    // On the login page: only skip ahead if the stored session is genuinely
-    // usable, so a stale token never bounces the user between pages.
-    async restoreSession() {
-        const token = localStorage.getItem('flexy_token');
-        const payload = decodeTokenPayload(token);
-
-        if (payload && this.currentUser && payload.exp * 1000 > Date.now() + 5000) {
-            this.redirectAfterLogin(!this.currentUser.isVerified);
-            return;
-        }
-
-        if (payload) {
-            // The access token expired; the HttpOnly refresh cookie may still be valid.
+    const session = {
+        token() {
+            return localStorage.getItem(TOKEN_KEY);
+        },
+        user() {
             try {
-                const res = await fetch(`${this.apiBase}/api/auth/refresh`, { method: 'POST', credentials: 'include' });
-                if (res.ok) {
-                    const data = await res.json();
-                    this.storeSession(data.token, data.user);
-                    this.redirectAfterLogin(!data.user.isVerified);
-                    return;
-                }
-            } catch (e) { /* offline: fall through to the sign-in form */ }
-            this.clearSession();
+                return JSON.parse(localStorage.getItem(USER_KEY) || 'null');
+            } catch (e) {
+                return null;
+            }
+        },
+        store(token, user) {
+            localStorage.setItem(TOKEN_KEY, token);
+            localStorage.setItem(USER_KEY, JSON.stringify(user));
+            // api.js keeps its own copy of the token when it is on the page.
+            if (typeof api !== 'undefined' && api) api.token = token;
+        },
+        clear() {
+            localStorage.removeItem(TOKEN_KEY);
+            localStorage.removeItem(USER_KEY);
+        },
+        // A stored access token that is a real JWT and still valid for a few seconds.
+        hasFreshToken() {
+            const payload = decodeTokenPayload(session.token());
+            return Boolean(payload && payload.exp * 1000 > Date.now() + 5000);
+        },
+        // Where a signed-in user belongs. The server enforces the same rule.
+        destinationFor(user) {
+            return user && user.profileCompleted ? 'home.html' : 'profile-setup.html';
         }
+    };
 
-        this.restorePendingOtp();
-    }
-
-    storeSession(token, user) {
-        this.currentUser = user;
-        this.isLoggedIn = true;
-        localStorage.setItem('flexy_user', JSON.stringify(user));
-        localStorage.setItem('flexy_token', token);
-    }
-
-    redirectAfterLogin(needsProfileSetup) {
-        window.location.replace(needsProfileSetup ? 'profile-setup.html' : 'home.html');
-    }
-
-    // ---------- API ----------
-
-    async post(path, body, { withCredentials = false } = {}) {
+    // Resolves to { ok, status, data } for any HTTP answer and rejects only
+    // when the server cannot be reached.
+    async function callApi(method, path, body, { token, withCookies = false } = {}) {
+        const headers = {};
+        if (body !== undefined) headers['Content-Type'] = 'application/json';
+        if (token) headers.Authorization = `Bearer ${token}`;
         let res;
         try {
-            res = await fetch(`${this.apiBase}${path}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                // Needed for the API to set/clear the HttpOnly refresh cookie,
-                // which lives on a different origin in production.
-                credentials: withCredentials ? 'include' : 'same-origin',
-                body: JSON.stringify(body)
+            res = await fetch(`${API}${path}`, {
+                method,
+                headers,
+                // Lets the API set and read the refresh cookie, which lives on
+                // the API's own (cross-site) origin in production.
+                credentials: withCookies ? 'include' : 'same-origin',
+                body: body === undefined ? undefined : JSON.stringify(body)
             });
         } catch (e) {
             const err = new Error("Can't reach Flexy right now. Check your connection and try again.");
@@ -136,407 +94,513 @@ class Auth {
             throw err;
         }
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-            const err = new Error(data.error || (res.status >= 500
-                ? 'Flexy is having trouble right now. Please try again shortly.'
-                : 'Something went wrong. Please try again.'));
-            err.status = res.status;
-            err.reason = data.reason;
-            err.retryAfter = Number(data.retryAfter) || null;
-            throw err;
-        }
-        return data;
+        return { ok: res.ok, status: res.status, data };
     }
 
-    // ---------- Event wiring ----------
-
-    setupEventListeners() {
-        const loginForm = document.getElementById('login-form');
-        loginForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleLogin();
-        });
-
-        const emailInput = document.getElementById('email');
-        if (emailInput) emailInput.addEventListener('input', () => this.setFormError(''));
-
-        const verifyOtpBtn = document.getElementById('verify-otp');
-        if (verifyOtpBtn) verifyOtpBtn.addEventListener('click', () => this.verifyOTP());
-
-        const resendOtpBtn = document.getElementById('resend-otp');
-        if (resendOtpBtn) {
-            resendOtpBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.resendOTP();
-            });
-        }
-
-        const changeEmail = document.getElementById('change-email');
-        if (changeEmail) {
-            changeEmail.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.changeEmail();
-            });
-        }
-
-        document.querySelectorAll('.close-modal').forEach(btn => {
-            btn.addEventListener('click', () => this.closeOTPModal());
-        });
-
-        this.setupOTPInputs();
-    }
-
-    setupOTPInputs() {
-        const otpInputs = document.querySelectorAll('.otp-input');
-        otpInputs.forEach((input, index) => {
-            input.addEventListener('input', (e) => {
-                // Only allow digits
-                e.target.value = e.target.value.replace(/\D/g, '').slice(-1);
-                this.setOtpStatus('');
-
-                if (e.target.value.length === 1 && index < otpInputs.length - 1) {
-                    otpInputs[index + 1].focus();
-                }
-
-                const allFilled = Array.from(otpInputs).every(inp => inp.value.length === 1);
-                if (allFilled) setTimeout(() => this.verifyOTP(), 150);
-            });
-
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Backspace' && !e.target.value && index > 0) {
-                    otpInputs[index - 1].focus();
-                } else if (e.key === 'Enter') {
-                    e.preventDefault();
-                    this.verifyOTP();
-                }
-            });
-
-            // Handle paste (and SMS/email autofill that pastes the whole code)
-            input.addEventListener('paste', (e) => {
-                e.preventDefault();
-                const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
-                if (!pasted) return;
-                otpInputs.forEach((inp, i) => {
-                    inp.value = pasted[i] || '';
-                });
-                otpInputs[Math.min(pasted.length, otpInputs.length) - 1].focus();
-                if (pasted.length >= otpInputs.length) setTimeout(() => this.verifyOTP(), 150);
-            });
-        });
-    }
-
-    // ---------- Step 1: request a code ----------
-
-    async handleLogin() {
-        if (this.isSending) return;
-
-        const emailInput = document.getElementById('email');
-        const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
-
-        if (!email || !EMAIL_PATTERN.test(email)) {
-            this.setFormError('Please enter a valid email address, like name@example.com.');
-            if (emailInput) emailInput.focus();
-            return;
-        }
-        this.setFormError('');
-
-        const submitBtn = document.querySelector('#login-form .btn-primary');
-        const originalHTML = submitBtn ? submitBtn.innerHTML : '';
-        this.isSending = true;
-        if (submitBtn) {
-            submitBtn.innerHTML = '<div class="loading-spinner"></div> Sending code...';
-            submitBtn.disabled = true;
-        }
-
+    // Swaps the refresh cookie for a new access token. Returns the API's
+    // { token, user } or null when there is no usable session.
+    async function refreshSession() {
         try {
-            // The server answers 200 only after the email provider accepted the message.
-            const data = await this.post('/api/auth/request-otp', { email });
-            this.startPendingOtp(email, data);
-            this.showNotification('Verification code sent. Check your inbox.', 'success');
-            this.showOTPModal();
-        } catch (error) {
-            const recent = (this.pending && this.pending.email === email) ? this.pending : this.recentSends[email];
-            if (error.status === 429 && recent && recent.expiresAt > Date.now()) {
-                // A code for this address went out moments ago and still works.
-                this.pending = { ...recent, resendAt: Date.now() + (error.retryAfter || 60) * 1000 };
-                this.savePending();
-                this.showOTPModal();
-                this.setOtpStatus('We already sent a code to this address. Enter it below, or request a new one when the timer ends.', 'info');
-            } else {
-                const message = error.status === 429 && error.retryAfter
-                    ? `${error.message} Try again in ${formatSeconds(error.retryAfter)}.`
-                    : error.message;
-                this.setFormError(message);
-                this.showNotification(message, 'error');
+            const { ok, data } = await callApi('POST', '/auth/refresh', undefined, { withCookies: true });
+            if (ok && data.token) {
+                session.store(data.token, data.user);
+                return data;
             }
-        } finally {
-            this.isSending = false;
-            if (submitBtn) {
-                submitBtn.innerHTML = originalHTML;
-                submitBtn.disabled = false;
-            }
+        } catch (e) { /* offline: treated as signed out */ }
+        return null;
+    }
+
+    // A signed-in API call that renews an expired access token once.
+    async function authorized(method, path, body, { withCookies = false } = {}) {
+        let token = session.token();
+        if (!session.hasFreshToken()) {
+            const renewed = await refreshSession();
+            token = renewed ? renewed.token : null;
         }
+        if (!token) return { ok: false, status: 401, data: { error: 'Please log in again.' } };
+
+        let result = await callApi(method, path, body, { token, withCookies });
+        if (result.status === 401) {
+            const renewed = await refreshSession();
+            if (renewed) result = await callApi(method, path, body, { token: renewed.token, withCookies });
+        }
+        return result;
     }
 
-    startPendingOtp(email, data) {
-        const now = Date.now();
-        this.pending = {
-            email,
-            expiresAt: now + (Number(data.expiresInSeconds) || 300) * 1000,
-            resendAt: now + (Number(data.resendAvailableInSeconds) || 60) * 1000
-        };
-        this.recentSends[email] = this.pending;
-        this.savePending();
-    }
-
-    savePending() {
-        if (this.pending) sessionStorage.setItem(PENDING_OTP_KEY, JSON.stringify(this.pending));
-        else sessionStorage.removeItem(PENDING_OTP_KEY);
-    }
-
-    restorePendingOtp() {
-        let saved = null;
+    // Signs out every device: the server revokes all refresh tokens.
+    async function logout() {
         try {
-            saved = JSON.parse(sessionStorage.getItem(PENDING_OTP_KEY) || 'null');
-        } catch (e) { /* ignore corrupt state */ }
+            await callApi('POST', '/auth/logout', undefined, { withCookies: true });
+        } catch (e) { /* offline: still clear the local session */ }
+        session.clear();
+        window.location.replace('login.html');
+    }
 
-        if (!saved || !saved.email || !(saved.expiresAt > Date.now())) {
-            this.pending = null;
-            this.savePending();
+    // On the log-in and sign-up pages: skip ahead only if the stored session
+    // genuinely works, so a stale token never bounces between pages.
+    async function resumeExistingSession() {
+        const user = session.user();
+        if (session.hasFreshToken() && user && typeof user.profileCompleted === 'boolean') {
+            window.location.replace(session.destinationFor(user));
             return;
         }
-        this.pending = saved;
-        const emailInput = document.getElementById('email');
-        if (emailInput) emailInput.value = saved.email;
-        this.showOTPModal();
+        if (!session.token()) return;
+        // The access token expired; the refresh cookie may still be valid.
+        const renewed = await refreshSession();
+        if (renewed) window.location.replace(session.destinationFor(renewed.user));
+        else session.clear();
     }
 
-    // ---------- Step 2: enter the code ----------
+    // ---------- Validation ----------
 
-    showOTPModal() {
-        const otpMsg = document.getElementById('otp-message');
-        if (otpMsg && this.pending) {
-            const masked = this.pending.email.replace(/(.{2}).+(@.+)/, '$1***$2');
-            const strong = document.createElement('strong');
-            strong.style.color = 'var(--primary)';
-            strong.textContent = masked;
-            otpMsg.replaceChildren('Enter the 6-digit code sent to ', strong);
+    function normalizeUsername(value) {
+        const name = String(value || '').trim();
+        return (name.startsWith('@') ? name.slice(1) : name).toLowerCase();
+    }
+
+    function normalizePhone(value) {
+        const phone = String(value || '').trim();
+        if (!/^\+?[\d\s().-]+$/.test(phone)) return null;
+        const digits = phone.replace(/\D/g, '');
+        return digits.length >= 7 && digits.length <= 15 ? (phone.startsWith('+') ? '+' : '') + digits : null;
+    }
+
+    function passwordProblem(password, { username, email } = {}) {
+        if (!password) return 'Enter a password';
+        if (password.length < PASSWORD_MIN) return `Use at least ${PASSWORD_MIN} characters`;
+        if (password.length > PASSWORD_MAX) return `Use at most ${PASSWORD_MAX} characters`;
+        if (!/\p{L}/u.test(password) || !/\p{N}/u.test(password)) return 'Include at least one letter and one number';
+        const lower = password.toLowerCase();
+        const personal = [username, email, email ? email.split('@')[0] : ''].filter(v => v && v.length >= 3);
+        if (personal.includes(lower)) return 'Your password must not be your username or email';
+        return '';
+    }
+
+    const checks = {
+        fullName(value) {
+            const name = value.replace(/\s+/g, ' ').trim();
+            if (!name) return 'Enter your full name';
+            return name.length > 50 ? 'Use at most 50 characters' : '';
+        },
+        username(value) {
+            const name = normalizeUsername(value);
+            if (!name) return 'Choose a username';
+            return USERNAME_RE.test(name) ? '' : 'Use 3-30 letters, numbers, underscores or periods, without a period at the start or end';
+        },
+        phone(value) {
+            if (!value.trim()) return 'Enter your phone number';
+            return normalizePhone(value) ? '' : 'Enter a valid phone number with 7-15 digits, like +91 98765 43210';
+        },
+        email(value) {
+            const email = value.trim().toLowerCase();
+            if (!email) return 'Enter your email address';
+            return email.length <= 254 && EMAIL_RE.test(email) ? '' : 'Enter a valid email address, like name@example.com';
         }
+    };
 
-        this.setOtpStatus('');
-        this.clearOtpInputs();
-        document.getElementById('otp-modal').classList.add('active');
-        this.startTimers();
-
-        setTimeout(() => {
-            const firstInput = document.querySelector('.otp-input');
-            if (firstInput) firstInput.focus();
-        }, 100);
+    function confirmProblem(confirm, password) {
+        if (!confirm) return 'Re-enter your password';
+        return confirm === password ? '' : 'Passwords do not match';
     }
 
-    closeOTPModal() {
-        this.stopTimers();
-        document.querySelectorAll('.modal').forEach(modal => modal.classList.remove('active'));
+    // ---------- Form helpers ----------
+
+    function fieldError(input, message) {
+        const el = document.getElementById(`${input.id}-error`);
+        if (el) el.textContent = message || '';
+        input.setAttribute('aria-invalid', message ? 'true' : 'false');
     }
 
-    changeEmail() {
-        this.pending = null;
-        this.savePending();
-        this.closeOTPModal();
-        const emailInput = document.getElementById('email');
-        if (emailInput) {
-            emailInput.focus();
-            emailInput.select();
-        }
-    }
-
-    startTimers() {
-        this.stopTimers();
-        this.tick();
-        this._timer = setInterval(() => this.tick(), 1000);
-    }
-
-    stopTimers() {
-        if (this._timer) clearInterval(this._timer);
-        this._timer = null;
-    }
-
-    // Keeps the expiry notice and the resend button in step with the server's rules.
-    tick() {
-        if (!this.pending) return;
-        const now = Date.now();
-        const expiresIn = Math.max(0, Math.ceil((this.pending.expiresAt - now) / 1000));
-        const resendIn = expiresIn === 0 ? 0 : Math.max(0, Math.ceil((this.pending.resendAt - now) / 1000));
-
-        const expiryEl = document.getElementById('otp-expiry');
-        if (expiryEl) {
-            expiryEl.textContent = expiresIn > 0
-                ? `Code expires in ${formatSeconds(expiresIn)}`
-                : 'This code has expired. Request a new one.';
-        }
-
-        const resendBtn = document.getElementById('resend-otp');
-        const countdownEl = document.getElementById('otp-countdown');
-        const locked = resendIn > 0 || this.isSending;
-        if (resendBtn) resendBtn.setAttribute('aria-disabled', locked ? 'true' : 'false');
-        if (countdownEl) countdownEl.textContent = resendIn > 0 ? ` (${formatSeconds(resendIn)})` : '';
-    }
-
-    async verifyOTP() {
-        if (this.isVerifying) return;
-
-        const otpInputs = document.querySelectorAll('.otp-input');
-        const code = Array.from(otpInputs).map(inp => inp.value).join('');
-
-        if (!/^\d{6}$/.test(code)) {
-            this.setOtpStatus('Enter all 6 digits of the code.', 'error');
-            return;
-        }
-        if (!this.pending) {
-            this.setOtpStatus('Your sign-in session ended. Use a different email to start again.', 'error');
-            return;
-        }
-        if (this.pending.expiresAt <= Date.now()) {
-            this.setOtpStatus('This code has expired. Request a new one.', 'error');
-            return;
-        }
-
-        const verifyBtn = document.getElementById('verify-otp');
-        const originalHTML = verifyBtn ? verifyBtn.innerHTML : '';
-        this.isVerifying = true;
-        otpInputs.forEach(inp => { inp.disabled = true; });
-        if (verifyBtn) {
-            verifyBtn.innerHTML = '<div class="loading-spinner"></div> Verifying...';
-            verifyBtn.disabled = true;
-        }
-
-        try {
-            const data = await this.post('/api/auth/verify-otp', { email: this.pending.email, code }, { withCredentials: true });
-            this.completeLogin(data.token, data.user, data.isNewUser);
-        } catch (error) {
-            this.setOtpStatus(error.message, 'error');
-            if (error.reason === 'expired' || error.reason === 'too_many_attempts' || error.reason === 'invalid_code') {
-                // This code can no longer succeed: let the user request a new one now.
-                this.pending.resendAt = 0;
-                if (error.reason === 'expired') this.pending.expiresAt = Date.now();
-                this.savePending();
-                this.tick();
-            }
-
-            // Shake animation on error
-            const otpContainer = document.querySelector('.otp-container');
-            if (otpContainer) {
-                otpContainer.style.animation = 'shake 0.5s ease';
-                setTimeout(() => otpContainer.style.animation = '', 500);
-            }
-            otpInputs.forEach(inp => { inp.disabled = false; });
-            this.clearOtpInputs();
-            if (otpInputs[0]) otpInputs[0].focus();
-        } finally {
-            this.isVerifying = false;
-            if (verifyBtn) {
-                verifyBtn.innerHTML = originalHTML;
-                verifyBtn.disabled = false;
-            }
-        }
-    }
-
-    completeLogin(token, user, isNewUser) {
-        this.storeSession(token, user);
-        this.recentSends = {};
-        this.pending = null;
-        this.savePending();
-        this.closeOTPModal();
-        this.showNotification('Verification successful!', 'success');
-        setTimeout(() => this.redirectAfterLogin(isNewUser), 800);
-    }
-
-    async resendOTP() {
-        if (this.isSending || !this.pending) return;
-        if (Date.now() < this.pending.resendAt && this.pending.expiresAt > Date.now()) return;
-
-        this.isSending = true;
-        this.tick();
-        this.setOtpStatus('Sending a new code...', 'info');
-        try {
-            const data = await this.post('/api/auth/request-otp', { email: this.pending.email });
-            this.startPendingOtp(this.pending.email, data);
-            this.clearOtpInputs();
-            this.setOtpStatus('A new code is on its way. Earlier codes no longer work.', 'success');
-            const firstInput = document.querySelector('.otp-input');
-            if (firstInput) firstInput.focus();
-        } catch (error) {
-            if (error.retryAfter) {
-                this.pending.resendAt = Date.now() + error.retryAfter * 1000;
-                this.savePending();
-            }
-            this.setOtpStatus(error.message, 'error');
-        } finally {
-            this.isSending = false;
-            this.tick();
-        }
-    }
-
-    clearOtpInputs() {
-        document.querySelectorAll('.otp-input').forEach(inp => {
-            inp.value = '';
-            inp.disabled = false;
-        });
-    }
-
-    setOtpStatus(message, type = 'info') {
-        const el = document.getElementById('otp-status');
+    function showAlert(el, message, type = 'error') {
         if (!el) return;
-        el.textContent = message;
-        el.className = `otp-status${message ? ' is-' + type : ''}`;
+        el.textContent = message || '';
+        el.className = `auth-alert${message ? ` is-visible is-${type}` : ''}`;
     }
 
-    setFormError(message) {
-        const el = document.getElementById('email-error');
-        if (el) el.textContent = message;
-    }
-
-    // ---------- Shared helpers ----------
-
-    async logout() {
-        try {
-            // Revokes the refresh token server-side and clears the cookie.
-            await fetch(`${this.apiBase}/api/auth/logout`, { method: 'POST', credentials: 'include' });
-        } catch (e) {
-            console.error('Logout error:', e);
-        }
-        this.clearSession();
-        sessionStorage.removeItem(PENDING_OTP_KEY);
-        this.showNotification('Logged out successfully', 'success');
-        setTimeout(() => { window.location.href = 'login.html'; }, 600);
-    }
-
-    getUser() { return this.currentUser; }
-    isAuthenticated() { return this.isLoggedIn; }
-
-    showNotification(message, type = 'info') {
-        if (typeof notify === 'function') notify(message, type);
-    }
-
-    closeAllModals() {
-        this.closeOTPModal();
-    }
-
-    checkAuth() {
-        if (!this.isAuthenticated() &&
-            !window.location.href.includes('login.html') &&
-            !window.location.href.includes('index.html')) {
-            window.location.href = 'login.html';
+    function setBusy(button, busy, busyLabel) {
+        if (busy) {
+            button.dataset.label = button.textContent.trim();
+            button.disabled = true;
+            button.setAttribute('aria-busy', 'true');
+            const spinner = document.createElement('span');
+            spinner.className = 'auth-spinner';
+            spinner.setAttribute('aria-hidden', 'true');
+            button.replaceChildren(spinner, document.createTextNode(busyLabel));
+        } else {
+            button.disabled = false;
+            button.removeAttribute('aria-busy');
+            if (button.dataset.label) button.textContent = button.dataset.label;
         }
     }
-}
 
-// Initialize auth
-const auth = new Auth();
+    function wirePasswordToggles(root = document) {
+        root.querySelectorAll('[data-toggle-password]').forEach(button => {
+            const input = document.getElementById(button.dataset.togglePassword);
+            if (!input) return;
+            button.addEventListener('click', () => {
+                const show = input.type === 'password';
+                input.type = show ? 'text' : 'password';
+                button.textContent = show ? 'Hide' : 'Show';
+                button.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+            });
+        });
+    }
 
-// Global functions
-function logout() { auth.logout(); }
+    // Password managers only offer to save fields that are type="password" at submit.
+    function hidePasswords(form) {
+        form.querySelectorAll('[data-toggle-password]').forEach(button => {
+            const input = document.getElementById(button.dataset.togglePassword);
+            if (input && input.type === 'text') button.click();
+        });
+    }
 
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = auth;
-}
+    function updateChecklist(list, password) {
+        if (!list) return;
+        const rules = {
+            length: password.length >= PASSWORD_MIN && password.length <= PASSWORD_MAX,
+            mix: /\p{L}/u.test(password) && /\p{N}/u.test(password)
+        };
+        list.querySelectorAll('[data-rule]').forEach(item => {
+            item.classList.toggle('is-met', Boolean(rules[item.dataset.rule]));
+        });
+    }
+
+    // Shows the server's per-field messages; returns the first field it marked.
+    function applyFieldErrors(form, fields) {
+        let first = null;
+        for (const [name, message] of Object.entries(fields || {})) {
+            const input = form.elements[name];
+            if (!input) continue;
+            fieldError(input, message);
+            first = first || input;
+        }
+        return first;
+    }
+
+    function errorMessage(status, data) {
+        if (data && data.error) return data.error;
+        return status >= 500 ? SERVER_TROUBLE : 'Something went wrong. Please try again.';
+    }
+
+    // ---------- Log in ----------
+
+    function initLoginPage(form) {
+        const identifier = form.elements.identifier;
+        const password = form.elements.password;
+        const alertEl = document.getElementById('form-alert');
+        const submit = form.querySelector('[type="submit"]');
+        let busy = false;
+
+        resumeExistingSession();
+
+        for (const input of [identifier, password]) {
+            input.addEventListener('input', () => {
+                fieldError(input, '');
+                if (alertEl.classList.contains('is-error')) showAlert(alertEl, '');
+            });
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (busy) return;
+            showAlert(alertEl, '');
+
+            const id = identifier.value.trim();
+            fieldError(identifier, id ? '' : 'Enter your username or email');
+            fieldError(password, password.value ? '' : 'Enter your password');
+            if (!id) return identifier.focus();
+            if (!password.value) return password.focus();
+
+            busy = true;
+            hidePasswords(form);
+            setBusy(submit, true, 'Logging in...');
+            try {
+                const { ok, status, data } = await callApi('POST', '/auth/login',
+                    { identifier: id, password: password.value }, { withCookies: true });
+                if (ok) {
+                    session.store(data.token, data.user);
+                    window.location.replace(session.destinationFor(data.user));
+                    return;
+                }
+                showAlert(alertEl, errorMessage(status, data));
+                if (status === 401) {
+                    password.value = '';
+                    password.focus();
+                }
+            } catch (err) {
+                showAlert(alertEl, err.message);
+            }
+            busy = false;
+            setBusy(submit, false);
+        });
+    }
+
+    // ---------- Sign up ----------
+
+    function initSignupPage(form) {
+        const alertEl = document.getElementById('form-alert');
+        const submit = form.querySelector('[type="submit"]');
+        const checklist = document.getElementById('password-rules');
+        const names = ['fullName', 'username', 'phone', 'email', 'password', 'confirmPassword'];
+        const inputs = names.map(name => form.elements[name]);
+        const touched = new Set();
+        let busy = false;
+
+        resumeExistingSession();
+
+        function problemFor(input) {
+            const value = input.value;
+            if (input.name === 'password') {
+                return passwordProblem(value, {
+                    username: normalizeUsername(form.elements.username.value),
+                    email: form.elements.email.value.trim().toLowerCase()
+                });
+            }
+            if (input.name === 'confirmPassword') return confirmProblem(value, form.elements.password.value);
+            return checks[input.name](value);
+        }
+
+        function validate(input) {
+            const problem = problemFor(input);
+            fieldError(input, problem);
+            return problem;
+        }
+
+        for (const input of inputs) {
+            // Errors appear once the user leaves a field, and disappear as
+            // soon as the value becomes valid.
+            input.addEventListener('blur', () => {
+                if (!input.value && !touched.has(input.name)) return;
+                touched.add(input.name);
+                if (!validate(input) && input.name === 'username') input.value = normalizeUsername(input.value);
+            });
+            input.addEventListener('input', () => {
+                if (input.getAttribute('aria-invalid') === 'true') validate(input);
+                if (input.name === 'password') {
+                    updateChecklist(checklist, input.value);
+                    if (touched.has('confirmPassword')) validate(form.elements.confirmPassword);
+                }
+                if (alertEl.classList.contains('is-error')) showAlert(alertEl, '');
+            });
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (busy) return;
+            names.forEach(name => touched.add(name));
+            const invalid = inputs.filter(input => validate(input));
+            if (invalid.length) {
+                showAlert(alertEl, FIX_FIELDS);
+                invalid[0].focus();
+                return;
+            }
+
+            busy = true;
+            hidePasswords(form);
+            showAlert(alertEl, '');
+            setBusy(submit, true, 'Creating your account...');
+            try {
+                const body = Object.fromEntries(inputs.map(input => [input.name, input.value]));
+                const { ok, status, data } = await callApi('POST', '/auth/signup', body, { withCookies: true });
+                if (ok) {
+                    session.store(data.token, data.user);
+                    window.location.replace('profile-setup.html');
+                    return;
+                }
+                const first = applyFieldErrors(form, data.fields);
+                showAlert(alertEl, errorMessage(status, data));
+                if (first) first.focus();
+            } catch (err) {
+                showAlert(alertEl, err.message);
+            }
+            busy = false;
+            setBusy(submit, false);
+        });
+    }
+
+    // ---------- One-time password link ----------
+
+    function initResetPage(form) {
+        const alertEl = document.getElementById('form-alert');
+        const submit = form.querySelector('[type="submit"]');
+        const done = document.getElementById('reset-done');
+        const checklist = document.getElementById('password-rules');
+        const password = form.elements.password;
+        const confirm = form.elements.confirmPassword;
+        let busy = false;
+
+        // The token is in the URL fragment, which browsers never send to a
+        // server. Take it out of the address bar as well.
+        const token = new URLSearchParams(window.location.hash.slice(1)).get('token');
+        if (window.location.hash) history.replaceState(null, '', window.location.pathname + window.location.search);
+
+        function linkUnusable(message) {
+            form.hidden = true;
+            showAlert(alertEl, message || 'This password link is invalid, has expired or was already used. Ask for a new one.');
+        }
+        if (!token) {
+            linkUnusable('Open the full password link you were sent. If it no longer works, ask for a new one.');
+            return;
+        }
+
+        password.addEventListener('input', () => {
+            updateChecklist(checklist, password.value);
+            if (password.getAttribute('aria-invalid') === 'true') fieldError(password, passwordProblem(password.value));
+            if (confirm.value) fieldError(confirm, confirmProblem(confirm.value, password.value));
+        });
+        confirm.addEventListener('input', () => {
+            if (confirm.getAttribute('aria-invalid') === 'true') fieldError(confirm, confirmProblem(confirm.value, password.value));
+        });
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (busy) return;
+            const passwordIssue = passwordProblem(password.value);
+            const confirmIssue = confirmProblem(confirm.value, password.value);
+            fieldError(password, passwordIssue);
+            fieldError(confirm, confirmIssue);
+            if (passwordIssue) return password.focus();
+            if (confirmIssue) return confirm.focus();
+
+            busy = true;
+            hidePasswords(form);
+            showAlert(alertEl, '');
+            setBusy(submit, true, 'Saving...');
+            try {
+                const { ok, status, data } = await callApi('POST', '/auth/password-reset',
+                    { token, password: password.value, confirmPassword: confirm.value });
+                if (ok) {
+                    // Every session was signed out on the server; drop the local one too.
+                    session.clear();
+                    form.hidden = true;
+                    const name = document.getElementById('reset-username');
+                    if (name && data.username) name.textContent = `@${data.username}`;
+                    done.hidden = false;
+                    done.querySelector('a').focus();
+                    return;
+                }
+                if (data.reason === 'invalid_link') {
+                    linkUnusable(data.error);
+                    return;
+                }
+                const first = applyFieldErrors(form, data.fields);
+                showAlert(alertEl, errorMessage(status, data));
+                if (first) first.focus();
+            } catch (err) {
+                showAlert(alertEl, err.message);
+            }
+            busy = false;
+            setBusy(submit, false);
+        });
+    }
+
+    // ---------- Settings: set or change password ----------
+
+    function initPasswordSettings(form) {
+        const alertEl = document.getElementById('password-alert');
+        const submit = form.querySelector('[type="submit"]');
+        const currentField = document.getElementById('current-password-field');
+        const intro = document.getElementById('password-intro');
+        const checklist = document.getElementById('password-rules');
+        const current = form.elements.currentPassword;
+        const next = form.elements.newPassword;
+        const confirm = form.elements.confirmPassword;
+        let hasPassword = true;
+        let busy = false;
+
+        authorized('GET', '/auth/me').then(({ ok, data }) => {
+            if (!ok) return;
+            const email = document.getElementById('security-email-display');
+            if (email) email.textContent = data.email || `@${data.username}`;
+            const username = document.getElementById('security-username-display');
+            if (username) username.textContent = `@${data.username}`;
+            hasPassword = data.hasPassword !== false;
+            if (!hasPassword) {
+                currentField.hidden = true;
+                submit.textContent = 'Set password';
+                intro.textContent = 'Your account was created with an email code and has no password yet. Set one now so you can keep logging in with your username or email.';
+            }
+        }).catch(() => {});
+
+        next.addEventListener('input', () => updateChecklist(checklist, next.value));
+        for (const input of [current, next, confirm]) {
+            input.addEventListener('input', () => fieldError(input, ''));
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (busy) return;
+            const problems = [
+                [current, hasPassword && !current.value ? 'Enter your current password' : ''],
+                [next, passwordProblem(next.value)],
+                [confirm, confirmProblem(confirm.value, next.value)]
+            ];
+            problems.forEach(([input, problem]) => fieldError(input, problem));
+            const firstInvalid = problems.find(([, problem]) => problem);
+            if (firstInvalid) return firstInvalid[0].focus();
+
+            busy = true;
+            hidePasswords(form);
+            showAlert(alertEl, '');
+            setBusy(submit, true, 'Saving...');
+            try {
+                const body = { newPassword: next.value, confirmPassword: confirm.value };
+                if (hasPassword) body.currentPassword = current.value;
+                const { ok, status, data } = await authorized('POST', '/auth/change-password', body, { withCookies: true });
+                if (ok) {
+                    session.store(data.token, { ...(session.user() || {}), ...data.user, hasPassword: true });
+                    form.reset();
+                    updateChecklist(checklist, '');
+                    hasPassword = true;
+                    currentField.hidden = false;
+                    submit.dataset.label = 'Change password';
+                    intro.textContent = 'Changing your password signs you out on every other device.';
+                    showAlert(alertEl, data.message, 'success');
+                } else {
+                    const first = applyFieldErrors(form, data.fields);
+                    showAlert(alertEl, errorMessage(status, data));
+                    if (first) first.focus();
+                }
+            } catch (err) {
+                showAlert(alertEl, err.message);
+            }
+            busy = false;
+            setBusy(submit, false);
+        });
+    }
+
+    // ---------- Wiring ----------
+
+    function init() {
+        wirePasswordToggles();
+        const pages = [
+            ['login-form', initLoginPage],
+            ['signup-form', initSignupPage],
+            ['reset-form', initResetPage],
+            ['password-form', initPasswordSettings]
+        ];
+        for (const [id, initPage] of pages) {
+            const form = document.getElementById(id);
+            if (form) initPage(form);
+        }
+    }
+
+    window.FlexyAuth = {
+        session,
+        callApi,
+        authorized,
+        refreshSession,
+        logout,
+        normalizeUsername,
+        USERNAME_RE,
+        fieldError,
+        showAlert,
+        setBusy,
+        errorMessage
+    };
+    // Pages with a "Sign out" button call logout(); api.js defines the same.
+    if (typeof window.logout !== 'function') window.logout = logout;
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+})();

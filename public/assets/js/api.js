@@ -162,7 +162,7 @@ class API {
 
     // Auth API Methods
     // The demo OTP methods that used to live here accepted a hardcoded code.
-    // They were never called; real sign-in is the email OTP flow at /login.html.
+    // They were never called; real sign-in is the password log-in at /login.html.
     async loginWithOTP() {
         throw new Error('Sign in at /login.html');
     }

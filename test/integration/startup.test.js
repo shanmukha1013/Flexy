@@ -1,5 +1,5 @@
 // Spawns the real entry point (server.js) to verify process-level behaviour:
-// the original crash on a missing RESEND_API_KEY, production fail-fast on bad
+// signup and login against a real server, production fail-fast on bad
 // configuration, and degraded mode when MongoDB is unreachable.
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
@@ -66,55 +66,45 @@ describe('server.js startup', () => {
     before(async () => { mongod = await MongoMemoryServer.create(); });
     after(async () => { await mongod.stop(); });
 
-    test('starts without RESEND_API_KEY and reports email login as unavailable', async () => {
+    test('starts with just a database (no email provider) and serves signup and login', async () => {
         const server = startServer({ MONGODB_URI: mongod.getUri('flexy_startup') });
         try {
             const [, port] = await server.waitFor(/running on port (\d+)/);
             await server.waitFor(/Connected to MongoDB/);
-            assert.match(server.output(), /RESEND_API_KEY is not set/);
-            assert.doesNotMatch(server.output(), /Missing API key/);
+            assert.doesNotMatch(server.output(), /RESEND|Email delivery/i);
 
             const base = `http://127.0.0.1:${port}`;
+            const post = (path, body, headers = {}) => fetch(`${base}${path}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Origin: base, ...headers },
+                body: JSON.stringify(body)
+            });
             const health = await fetch(`${base}/api/health`).then(r => r.json());
             assert.equal(health.database, 'connected');
-            assert.equal(health.email, 'not_configured');
 
-            const otp = await fetch(`${base}/api/auth/request-otp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: 'startup@example.test' })
+            const password = 'Startup check 2026';
+            const signup = await post('/api/auth/signup', {
+                fullName: 'Startup Check', username: 'startup_check', phone: '+91 98765 43210',
+                email: 'startup@example.test', password, confirmPassword: password
             });
-            assert.equal(otp.status, 503);
+            assert.equal(signup.status, 201);
+
+            const login = await post('/api/auth/login', { identifier: 'startup@example.test', password });
+            assert.equal(login.status, 200);
+            const { token } = await login.json();
+            const me = await fetch(`${base}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+            assert.equal((await me.json()).username, 'startup_check');
+
+            const refresh = await post('/api/auth/refresh', {}, { Cookie: login.headers.get('set-cookie').split(';')[0] });
+            assert.equal(refresh.status, 200);
+
+            const otp = await post('/api/auth/request-otp', { email: 'startup@example.test' });
+            assert.equal(otp.status, 404);
 
             const missing = await fetch(`${base}/api/not-a-route`);
             assert.equal(missing.status, 404);
             assert.deepEqual(await missing.json(), { error: 'API route not found' });
-        } finally {
-            await server.stop();
-        }
-    });
-
-    test('the console transport delivers codes to the log in development only', async () => {
-        const server = startServer({ MONGODB_URI: mongod.getUri('flexy_startup_console'), EMAIL_TRANSPORT: 'console' });
-        try {
-            const [, port] = await server.waitFor(/running on port (\d+)/);
-            await server.waitFor(/Connected to MongoDB/);
-            const base = `http://127.0.0.1:${port}`;
-            const sent = await fetch(`${base}/api/auth/request-otp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: 'dev@example.test' })
-            });
-            assert.equal(sent.status, 200);
-            const [, code] = await server.waitFor(/Verification code for dev@example\.test: (\d{6})/);
-
-            const verified = await fetch(`${base}/api/auth/verify-otp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: 'dev@example.test', code })
-            });
-            assert.equal(verified.status, 200);
-            assert.ok((await verified.json()).token);
+            assert.doesNotMatch(server.output(), new RegExp(password));
         } finally {
             await server.stop();
         }
@@ -133,36 +123,26 @@ describe('server.js startup', () => {
         assert.doesNotMatch(server.output(), /running on port/);
     });
 
-    test('production starts with a complete configuration and warns about the shared sender', async () => {
+    test('production starts with leftover Resend variables, naming them without printing their values', async () => {
         const server = startServer({
             NODE_ENV: 'production',
             MONGODB_URI: mongod.getUri('flexy_prod_ok'),
             JWT_SECRET: 'p'.repeat(40),
             JWT_REFRESH_SECRET: 'q'.repeat(40),
-            RESEND_API_KEY: 're_placeholder_not_used'
+            RESEND_API_KEY: 're_placeholder_not_used',
+            EMAIL_FROM: 'Flexy <login@leftover.example>'
         });
         try {
             const [, port] = await server.waitFor(/running on port (\d+) \(production\)/);
             await server.waitFor(/Connected to MongoDB/);
-            assert.match(server.output(), /shared resend\.dev sender/);
-            assert.doesNotMatch(server.output(), /re_placeholder_not_used/);
+            assert.match(server.output(), /RESEND_API_KEY is no longer used/);
+            assert.match(server.output(), /EMAIL_FROM is no longer used/);
+            assert.doesNotMatch(server.output(), /re_placeholder_not_used|leftover\.example/);
             const health = await fetch(`http://127.0.0.1:${port}/api/health`).then(r => r.json());
-            assert.equal(health.email, 'configured');
+            assert.equal(health.status, 'ok');
         } finally {
             await server.stop();
         }
-    });
-
-    test('production refuses EMAIL_TRANSPORT=console', async () => {
-        const server = startServer({
-            NODE_ENV: 'production',
-            MONGODB_URI: mongod.getUri('flexy_prod'),
-            JWT_SECRET: 'p'.repeat(40),
-            JWT_REFRESH_SECRET: 'q'.repeat(40),
-            EMAIL_TRANSPORT: 'console'
-        });
-        assert.equal(await server.exited, 1);
-        assert.match(server.output(), /EMAIL_TRANSPORT=console is not allowed in production/);
     });
 
     test('development keeps serving (with 503s) when MongoDB is unreachable', async () => {

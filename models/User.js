@@ -8,10 +8,12 @@ const UserSchema = new mongoose.Schema({
         trim: true,
         lowercase: true
     },
+    // Contact detail only: never verified and never used to sign in, so it is
+    // deliberately not unique (a unique, unverified number would let anyone
+    // block its real owner from signing up). See scripts/migrate-password-auth.js
+    // for removing the old unique index.
     phone: {
         type: String,
-        unique: true,
-        sparse: true,
         trim: true
     },
     username: {
@@ -25,6 +27,26 @@ const UserSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
+    // Argon2id hash (lib/passwords.js). Never selected unless a query asks for
+    // it with select('+passwordHash'), so it cannot leak through a response.
+    // Accounts created by the retired email sign-in have none until the owner
+    // sets one.
+    passwordHash: {
+        type: String,
+        select: false
+    },
+    passwordChangedAt: {
+        type: Date
+    },
+    // Set by the server once profile setup is done (lib/accounts.js). No
+    // default on purpose: older accounts without the field fall back to
+    // isVerified instead of being treated as incomplete.
+    profileCompleted: {
+        type: Boolean
+    },
+    // Legacy name for "profile setup complete" (it never meant identity
+    // verification). Kept in step with profileCompleted so a rollback to the
+    // previous release still works; not returned by the API.
     isVerified: {
         type: Boolean,
         default: false
@@ -101,18 +123,31 @@ const UserSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Auction'
     }],
+    // Left over from an earlier login prototype; some old documents still
+    // carry them. Never selected.
     otpCode: {
-        type: String
+        type: String,
+        select: false
     },
     otpExpires: {
-        type: Date
+        type: Date,
+        select: false
     },
     // Embedded in refresh tokens; incrementing it revokes every refresh token
-    // issued to this account (used by logout).
+    // issued to this account (logout, password change, password reset).
     tokenVersion: {
         type: Number,
         default: 0
     }
 }, { timestamps: true });
+
+// Defence in depth for any handler that sends a whole user document.
+const SECRET_FIELDS = ['passwordHash', 'otpCode', 'otpExpires', 'tokenVersion'];
+UserSchema.set('toJSON', {
+    transform(doc, ret) {
+        for (const field of SECRET_FIELDS) delete ret[field];
+        return ret;
+    }
+});
 
 module.exports = mongoose.model('User', UserSchema);

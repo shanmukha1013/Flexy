@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create your account | FLEXY</title>
+    <meta name="description" content="Create a Flexy account to buy, sell and showcase collectibles.">
+    <link rel="stylesheet" href="css/style.css?v=4">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body class="auth-page">
+    <main class="auth-container">
+        <div class="auth-card auth-card--wide glass-card">
+            <div class="auth-brand">
+                <a href="index.html" aria-label="Flexy home">
+                    <span class="logo-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5 4 4"/><path d="m11 9 4 4"/><path d="m13 7-8 8"/><path d="M9 11l-4 4"/><path d="m13 13-7 7"/><path d="M20 20H10"/></svg>
+                    </span>
+                    <span class="auth-brand-name">FLEXY</span>
+                    <span class="auth-brand-tagline">Every Item Finds Its Value</span>
+                </a>
+            </div>
+
+            <h1 class="auth-title">Create your account</h1>
+            <p class="auth-subtitle">Join collectors buying, selling and showcasing what they love.</p>
+
+            <div id="form-alert" class="auth-alert" role="alert"></div>
+
+            <form id="signup-form" novalidate>
+                <div class="auth-field">
+                    <label class="auth-label" for="fullName">Full name</label>
+                    <input class="auth-input" id="fullName" name="fullName" type="text" autocomplete="name" maxlength="50" required aria-describedby="fullName-error">
+                    <p class="auth-error" id="fullName-error"></p>
+                </div>
+
+                <div class="auth-field">
+                    <label class="auth-label" for="username">Username</label>
+                    <div class="auth-input-wrap">
+                        <span class="auth-prefix" aria-hidden="true">@</span>
+                        <input class="auth-input auth-input--prefixed" id="username" name="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="31" required aria-describedby="username-hint username-error">
+                    </div>
+                    <p class="auth-hint" id="username-hint">3-30 letters, numbers, underscores or periods. Other collectors will see it.</p>
+                    <p class="auth-error" id="username-error"></p>
+                </div>
+
+                <div class="auth-field">
+                    <label class="auth-label" for="phone">Phone number</label>
+                    <input class="auth-input" id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="24" placeholder="+91 98765 43210" required aria-describedby="phone-hint phone-error">
+                    <p class="auth-hint" id="phone-hint">Include your country code. Only you can see it.</p>
+                    <p class="auth-error" id="phone-error"></p>
+                </div>
+
+                <div class="auth-field">
+                    <label class="auth-label" for="email">Email address</label>
+                    <input class="auth-input" id="email" name="email" type="email" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" maxlength="254" placeholder="name@example.com" required aria-describedby="email-hint email-error">
+                    <p class="auth-hint" id="email-hint">You can also log in with it. Only you can see it.</p>
+                    <p class="auth-error" id="email-error"></p>
+                </div>
+
+                <div class="auth-field">
+                    <label class="auth-label" for="password">Password</label>
+                    <div class="auth-input-wrap">
+                        <input class="auth-input auth-input--with-toggle" id="password" name="password" type="password" autocomplete="new-password" maxlength="128" required aria-describedby="password-rules password-error">
+                        <button type="button" class="auth-toggle" data-toggle-password="password" aria-controls="password" aria-label="Show password">Show</button>
+                    </div>
+                    <ul class="auth-checklist" id="password-rules">
+                        <li data-rule="length">At least 8 characters</li>
+                        <li data-rule="mix">A letter and a number</li>
+                    </ul>
+                    <p class="auth-error" id="password-error"></p>
+                </div>
+
+                <div class="auth-field">
+                    <label class="auth-label" for="confirmPassword">Confirm password</label>
+                    <div class="auth-input-wrap">
+                        <input class="auth-input auth-input--with-toggle" id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" maxlength="128" required aria-describedby="confirmPassword-error">
+                        <button type="button" class="auth-toggle" data-toggle-password="confirmPassword" aria-controls="confirmPassword" aria-label="Show password">Show</button>
+                    </div>
+                    <p class="auth-error" id="confirmPassword-error"></p>
+                </div>
+
+                <button type="submit" class="btn btn-primary auth-submit">Create account</button>
+            </form>
+
+            <p class="auth-switch">Already have an account? <a class="auth-link" href="login.html">Log in</a></p>
+        </div>
+    </main>
+
+    <script src="js/auth.js?v=4"></script>
+</body>
+</html>

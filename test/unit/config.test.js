@@ -1,6 +1,6 @@
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
-const { loadConfig, assertValidConfig, ConfigError } = require('../../config/env');
+const { loadConfig, assertValidConfig, ConfigError, OBSOLETE_VARIABLES } = require('../../config/env');
 
 const STRONG_A = 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0';
 const STRONG_B = 'z9y8x7w6v5u4t3s2r1q0p9o8n7m6l5k4j3i2h1g0';
@@ -10,8 +10,6 @@ const productionEnv = (overrides = {}) => ({
     MONGODB_URI: 'mongodb+srv://user:pass@cluster.example.net/flexy',
     JWT_SECRET: STRONG_A,
     JWT_REFRESH_SECRET: STRONG_B,
-    RESEND_API_KEY: 're_live_example',
-    EMAIL_FROM: 'Flexy <login@flexy.example>',
     ...overrides
 });
 
@@ -19,6 +17,7 @@ describe('configuration', () => {
     test('a complete production config is valid', () => {
         const config = loadConfig(productionEnv());
         assert.deepEqual(config.errors, []);
+        assert.deepEqual(config.warnings, []);
         assert.equal(config.isProduction, true);
         assert.equal(config.cookie.secure, true);
         assert.equal(config.cookie.sameSite, 'none');
@@ -57,26 +56,23 @@ describe('configuration', () => {
         assert.ok(a.warnings.some(w => w.startsWith('JWT_SECRET is not set')));
     });
 
-    test('a missing Resend key is a warning, not a startup failure', () => {
-        const config = loadConfig(productionEnv({ RESEND_API_KEY: '' }));
+    test('no email provider is needed: email settings are not part of the config', () => {
+        const config = loadConfig(productionEnv());
+        assert.equal(config.email, undefined);
         assert.deepEqual(config.errors, []);
-        assert.ok(config.warnings.some(w => w.startsWith('RESEND_API_KEY is not set')));
     });
 
-    test('the console email transport is refused in production', () => {
-        const config = loadConfig(productionEnv({ EMAIL_TRANSPORT: 'console' }));
-        assert.ok(config.errors.some(e => e.includes('EMAIL_TRANSPORT=console is not allowed in production')));
-        assert.deepEqual(loadConfig({ NODE_ENV: 'development', EMAIL_TRANSPORT: 'console' }).errors, []);
-    });
-
-    test('an unknown email transport is rejected', () => {
-        assert.ok(loadConfig({ EMAIL_TRANSPORT: 'smtp' }).errors.some(e => e.includes('EMAIL_TRANSPORT must be')));
-    });
-
-    test('the shared resend.dev sender triggers a production warning', () => {
-        const config = loadConfig(productionEnv({ EMAIL_FROM: '' }));
-        assert.equal(config.email.from, 'Flexy <onboarding@resend.dev>');
-        assert.ok(config.warnings.some(w => w.includes('shared resend.dev sender')));
+    test('leftover email sign-in variables only produce a warning that names them, never their values', () => {
+        const config = loadConfig(productionEnv({
+            RESEND_API_KEY: 're_secret_value_123',
+            EMAIL_FROM: 'Flexy <login@flexy.example>',
+            EMAIL_TRANSPORT: 'console'
+        }));
+        assert.deepEqual(config.errors, []);
+        for (const name of OBSOLETE_VARIABLES) {
+            assert.ok(config.warnings.some(w => w.startsWith(`${name} is no longer used`)), name);
+        }
+        assert.doesNotMatch(config.warnings.join('\n'), /re_secret_value_123|login@flexy\.example/);
     });
 
     test('MONGODB_PASSWORD is substituted and URL-encoded', () => {

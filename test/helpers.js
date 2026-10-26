@@ -1,7 +1,6 @@
 // test/helpers.js
 // Shared fixtures. Integration tests run against a throwaway in-memory MongoDB
-// (mongodb-memory-server) and a fake email service: no real database, inbox or
-// email provider is ever touched.
+// (mongodb-memory-server): no real database is ever touched.
 
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
@@ -14,47 +13,31 @@ const User = require('../models/User');
 const TEST_ENV = Object.freeze({
     NODE_ENV: 'test',
     JWT_SECRET: 'test-access-secret-0123456789abcdefghijklmnop',
-    JWT_REFRESH_SECRET: 'test-refresh-secret-0123456789abcdefghijklmn',
-    EMAIL_TRANSPORT: 'resend',
-    RESEND_API_KEY: 're_test_key'
+    JWT_REFRESH_SECRET: 'test-refresh-secret-0123456789abcdefghijklmn'
+});
+
+// A password that satisfies the policy; tests that need another say so.
+const PASSWORD = 'Vintage watch 1962';
+
+const NO_RATE_LIMITS = Object.freeze({
+    signup: { limit: 10000 },
+    login: { limit: 10000 },
+    loginAccount: { limit: 10000 },
+    password: { limit: 10000 }
 });
 
 function testConfig(envOverrides = {}) {
     return loadConfig({ ...TEST_ENV, ...envOverrides });
 }
 
-function createFakeEmailService({ configured = true } = {}) {
-    return {
-        sent: [],
-        failures: [],
-        isConfigured() {
-            return configured;
-        },
-        describe() {
-            return 'fake';
-        },
-        async sendOtp(to, code, ttlMinutes) {
-            if (this.failures.length) throw this.failures.shift();
-            this.sent.push({ to, code, ttlMinutes });
-            return { id: `fake-${this.sent.length}`, provider: 'fake' };
-        },
-        lastCodeFor(email) {
-            const match = [...this.sent].reverse().find(m => m.to === email);
-            return match && match.code;
-        }
-    };
-}
-
 // Rate limits are effectively disabled unless a test opts in.
-function buildApp({ env, emailService, rateLimits } = {}) {
+function buildApp({ env, rateLimits } = {}) {
     const config = testConfig(env);
-    const email = emailService || createFakeEmailService();
     const { app, server, io } = createApp({
         config,
-        emailService: email,
-        rateLimits: rateLimits || { otpRequest: { limit: 10000 }, otpVerify: { limit: 10000 } }
+        rateLimits: { ...NO_RATE_LIMITS, ...rateLimits }
     });
-    return { app, server, io, config, emailService: email };
+    return { app, server, io, config };
 }
 
 async function startDatabase() {
@@ -75,6 +58,9 @@ async function clearDatabase() {
     await Promise.all(Object.values(collections).map(c => c.deleteMany({})));
 }
 
+// Inserts a user directly. By default it looks like an existing member who
+// finished profile setup (and has no password, like accounts from the old
+// email sign-in) so marketplace tests can use it straight away.
 let userCounter = 0;
 async function createUser(fields = {}) {
     userCounter += 1;
@@ -83,38 +69,85 @@ async function createUser(fields = {}) {
         username: `user${userCounter}_${Date.now().toString(36)}`,
         displayName: `User ${userCounter}`,
         isVerified: true,
+        profileCompleted: true,
+        interests: ['Coins'],
         ...fields
     });
 }
 
+// Access token as the server would issue it. `pc` mirrors the real claim; omit
+// it (pc: undefined) to imitate a token issued before the claim existed.
 function tokenFor(config, user, options = {}) {
+    const claims = { userId: user._id.toString() };
+    if (options.pc !== undefined) claims.pc = options.pc;
     return jwt.sign(
-        { userId: user._id.toString(), email: user.email },
+        claims,
         options.secret || config.jwt.accessSecret,
         { expiresIn: options.expiresIn || '15m', algorithm: 'HS256' }
     );
 }
 
-function authHeader(config, user) {
-    return { Authorization: `Bearer ${tokenFor(config, user)}` };
+function authHeader(config, user, options) {
+    return { Authorization: `Bearer ${tokenFor(config, user, options)}` };
 }
 
-// Runs the real request -> email -> verify flow and returns the session.
-async function loginViaOtp(app, emailService, email) {
-    const requested = await request(app).post('/api/auth/request-otp').send({ email });
-    if (requested.status !== 200) throw new Error(`request-otp failed: ${requested.status} ${JSON.stringify(requested.body)}`);
-    const code = emailService.lastCodeFor(email);
-    const verified = await request(app).post('/api/auth/verify-otp').send({ email, code });
-    if (verified.status !== 200) throw new Error(`verify-otp failed: ${verified.status} ${JSON.stringify(verified.body)}`);
-    const setCookie = verified.headers['set-cookie'] || [];
-    const cookie = setCookie.map(c => c.split(';')[0]).join('; ');
-    return { token: verified.body.token, user: verified.body.user, isNewUser: verified.body.isNewUser, cookie, setCookie };
+let signupCounter = 0;
+function signupFields(overrides = {}) {
+    signupCounter += 1;
+    return {
+        fullName: 'Shan Reddy',
+        username: `collector_${signupCounter}`,
+        phone: '+91 98765 43210',
+        email: `collector${signupCounter}@example.test`,
+        password: PASSWORD,
+        confirmPassword: PASSWORD,
+        ...overrides
+    };
+}
+
+function cookieFrom(res) {
+    return (res.headers['set-cookie'] || []).map(c => c.split(';')[0]).join('; ');
+}
+
+function sessionFrom(res) {
+    return {
+        status: res.status,
+        token: res.body.token,
+        user: res.body.user,
+        cookie: cookieFrom(res),
+        setCookie: res.headers['set-cookie'] || [],
+        auth: { Authorization: `Bearer ${res.body.token}` }
+    };
+}
+
+// Registers through the real endpoint and returns the session.
+async function signup(app, overrides = {}) {
+    const fields = signupFields(overrides);
+    const res = await request(app).post('/api/auth/signup').send(fields);
+    if (res.status !== 201) throw new Error(`signup failed: ${res.status} ${JSON.stringify(res.body)}`);
+    return { ...sessionFrom(res), fields };
+}
+
+async function login(app, identifier, password = PASSWORD) {
+    const res = await request(app).post('/api/auth/login').send({ identifier, password });
+    if (res.status !== 200) throw new Error(`login failed: ${res.status} ${JSON.stringify(res.body)}`);
+    return sessionFrom(res);
+}
+
+// Finishes profile setup through the real endpoint, then refreshes so the
+// returned access token carries the completed-profile claim.
+async function completeProfile(app, session, fields = { interests: ['Coins'] }) {
+    const put = await request(app).put(`/api/users/${session.user._id}`).set(session.auth).send(fields);
+    if (put.status !== 200) throw new Error(`profile update failed: ${put.status} ${JSON.stringify(put.body)}`);
+    const refreshed = await request(app).post('/api/auth/refresh').set('Cookie', session.cookie);
+    if (refreshed.status !== 200) throw new Error(`refresh failed: ${refreshed.status}`);
+    return { ...session, token: refreshed.body.token, user: refreshed.body.user, auth: { Authorization: `Bearer ${refreshed.body.token}` } };
 }
 
 module.exports = {
     TEST_ENV,
+    PASSWORD,
     testConfig,
-    createFakeEmailService,
     buildApp,
     startDatabase,
     stopDatabase,
@@ -122,5 +155,9 @@ module.exports = {
     createUser,
     tokenFor,
     authHeader,
-    loginViaOtp
+    signupFields,
+    cookieFrom,
+    signup,
+    login,
+    completeProfile
 };

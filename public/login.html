@@ -3,199 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FLEXY - Authentication</title>
-    <link rel="stylesheet" href="css/style.css">
-    <script src="js/loader.js"></script>
-    <style>
-        .auth-tab-group {
-            display: flex;
-            border-bottom: 1px solid var(--border-subtle);
-            margin-bottom: 2rem;
-        }
-        .auth-tab {
-            flex: 1;
-            text-align: center;
-            padding: 0.75rem;
-            color: var(--text-secondary);
-            font-weight: 600;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            transition: all var(--transition-fast);
-        }
-        .auth-tab.active {
-            color: var(--primary);
-            border-bottom-color: var(--primary);
-        }
-        .form-options {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.85rem;
-            margin-bottom: 1.5rem;
-        }
-        .remember-checkbox {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            cursor: pointer;
-            color: var(--text-secondary);
-        }
-        .forgot-link {
-            color: var(--primary);
-            text-decoration: none;
-            transition: color var(--transition-fast);
-        }
-        .forgot-link:hover {
-            color: var(--primary-hover);
-        }
-        .oauth-divider {
-            display: flex;
-            align-items: center;
-            margin: 2rem 0;
-            color: var(--text-muted);
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        .oauth-divider::before, .oauth-divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--border-subtle);
-        }
-        .oauth-divider::before { margin-right: 1rem; }
-        .oauth-divider::after { margin-left: 1rem; }
-        
-        .btn-google {
-            background: #FFFFFF;
-            color: #000000;
-            border: 1px solid #E5E7EB;
-            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.05);
-        }
-        .btn-google:hover {
-            background: #F3F4F6;
-            transform: translateY(-2px);
-        }
-        
-        /* Slide Animations */
-        .auth-card {
-            animation: card-reveal 0.5s var(--ease-spring);
-        }
-        @keyframes card-reveal {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes shake {
-            0%,100% { transform: translateX(0); }
-            20% { transform: translateX(-8px); }
-            40% { transform: translateX(8px); }
-            60% { transform: translateX(-6px); }
-            80% { transform: translateX(6px); }
-        }
-        .auth-inline-error {
-            min-height: 1.1rem;
-            margin: 0.4rem 0 0;
-            color: var(--danger);
-            font-size: 0.82rem;
-        }
-        .otp-status {
-            min-height: 1.25rem;
-            margin: 0;
-            font-size: 0.85rem;
-            line-height: 1.4;
-        }
-        .otp-status.is-error { color: var(--danger); }
-        .otp-status.is-success { color: var(--success); }
-        .otp-status.is-info { color: var(--text-secondary); }
-        .otp-input:disabled { opacity: 0.6; }
-        #resend-otp[aria-disabled="true"] { pointer-events: none; opacity: 0.45; }
-        .otp-status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: rgba(249,115,22,0.1);
-            border: 1px solid rgba(249,115,22,0.3);
-            border-radius: 20px;
-            padding: 0.4rem 1rem;
-            font-size: 0.8rem;
-            color: var(--primary);
-            font-weight: 600;
-            margin-bottom: 1.25rem;
-        }
-    </style>
+    <title>Log in | FLEXY</title>
+    <meta name="description" content="Log in to Flexy, the marketplace for collectors.">
+    <link rel="stylesheet" href="css/style.css?v=4">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
 </head>
-<body>
-    <div class="auth-container">
-        <div class="auth-card card glass-card">
-            <div class="logo-container" onclick="window.location.href='home.html'" style="cursor: pointer;">
-                <div class="logo-icon" aria-hidden="true" style="color: var(--primary); margin: 0 auto 0.75rem;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 100%; height: 100%;">
-    <path d="m15 5 4 4" />
-    <path d="m11 9 4 4" />
-    <path d="m13 7-8 8" />
-    <path d="M9 11l-4 4" />
-    <path d="m13 13-7 7" />
-    <path d="M20 20H10" />
-</svg>
-                </div>
-                <h1 class="logo-text">FLEXY</h1>
-                <p class="logo-subtext">Every Item Finds Its Value</p>
+<body class="auth-page">
+    <main class="auth-container">
+        <div class="auth-card glass-card">
+            <div class="auth-brand">
+                <a href="index.html" aria-label="Flexy home">
+                    <span class="logo-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5 4 4"/><path d="m11 9 4 4"/><path d="m13 7-8 8"/><path d="M9 11l-4 4"/><path d="m13 13-7 7"/><path d="M20 20H10"/></svg>
+                    </span>
+                    <span class="auth-brand-name">FLEXY</span>
+                    <span class="auth-brand-tagline">Every Item Finds Its Value</span>
+                </a>
             </div>
-            
-            <form id="login-form" class="auth-form" style="margin-top: 1.5rem;">
-                <div class="form-group">
-                    <label for="email" style="color: var(--text-secondary); font-weight: 500; margin-bottom: 0.5rem; display: block;">Email Address</label>
-                    <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" required aria-describedby="email-error" style="width: 100%; background: var(--dark-3); border: 1px solid var(--border-glass); padding: 0.75rem 1rem; border-radius: var(--radius-md); color: var(--text-primary); font-size: 1rem; outline: none; transition: border-color var(--transition-fast);" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border-glass)'">
-                    <p id="email-error" class="auth-inline-error" role="alert" aria-live="polite"></p>
+
+            <h1 class="auth-title">Log in</h1>
+            <p class="auth-subtitle">Welcome back. Use your username or email.</p>
+
+            <div id="form-alert" class="auth-alert" role="alert"></div>
+
+            <form id="login-form" novalidate>
+                <div class="auth-field">
+                    <label class="auth-label" for="identifier">Username or email</label>
+                    <input class="auth-input" id="identifier" name="identifier" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="254" required aria-describedby="identifier-error">
+                    <p class="auth-error" id="identifier-error"></p>
                 </div>
-                
-                <button type="submit" class="btn btn-primary btn-block" style="margin-top: 1.5rem; font-weight: 600;">
-                    <span class="btn-text" id="submit-btn-text">Continue</span>
-                </button>
+
+                <div class="auth-field">
+                    <label class="auth-label" for="password">Password</label>
+                    <div class="auth-input-wrap">
+                        <input class="auth-input auth-input--with-toggle" id="password" name="password" type="password" autocomplete="current-password" maxlength="1024" required aria-describedby="password-error">
+                        <button type="button" class="auth-toggle" data-toggle-password="password" aria-controls="password" aria-label="Show password">Show</button>
+                    </div>
+                    <p class="auth-error" id="password-error"></p>
+                </div>
+
+                <button type="submit" class="btn btn-primary auth-submit">Log in</button>
             </form>
-            
-            <div class="auth-footer" style="text-align: center; margin-top: 2rem;">
-                <p style="color: var(--text-secondary); font-size: 0.85rem;">Need help? <a href="#" class="forgot-link">Contact Support</a></p>
-            </div>
+
+            <p class="auth-switch">New to Flexy? <a class="auth-link" href="signup.html">Create an account</a></p>
         </div>
-    </div>
-    
-    <!-- OTP Verification Modal -->
-    <div id="otp-modal" class="modal">
-        <div class="modal-content glass-card">
-            <div class="modal-header">
-                <h3>Verify Security Code</h3>
-                <button type="button" class="close-modal" aria-label="Close">&times;</button>
-            </div>
-            <div class="modal-body" style="text-align: center;">
-                <div class="otp-status-badge">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-                    Verification code sent
-                </div>
-                <p id="otp-message" style="color: var(--text-secondary); font-size: 0.92rem; margin-bottom: 1.5rem; line-height: 1.6;">Enter the 6-digit code sent to your email.</p>
-                <div class="otp-container" role="group" aria-label="6-digit verification code">
-                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" autocomplete="one-time-code" aria-label="Digit 1 of 6">
-                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" aria-label="Digit 2 of 6">
-                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" aria-label="Digit 3 of 6">
-                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" aria-label="Digit 4 of 6">
-                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" aria-label="Digit 5 of 6">
-                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" aria-label="Digit 6 of 6">
-                </div>
-                <p id="otp-status" class="otp-status" role="alert" aria-live="polite"></p>
-                <div class="otp-actions" style="margin-top: 1.25rem;">
-                    <button id="verify-otp" type="button" class="btn btn-primary btn-block" style="font-weight: 600;">Verify &amp; Continue</button>
-                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 1rem;">
-                        Didn't receive code? <a href="#" id="resend-otp" class="forgot-link" role="button">Resend code<span id="otp-countdown" style="color: var(--text-muted);"></span></a>
-                    </p>
-                    <p id="otp-expiry" style="color: var(--text-muted); font-size: 0.78rem; margin-top: 0.5rem;">Code expires in 5 minutes</p>
-                    <p style="font-size: 0.85rem; margin-top: 0.75rem;"><a href="#" id="change-email" class="forgot-link">Use a different email</a></p>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <script src="js/notify.js?v=3"></script>
-    <script src="js/auth.js?v=3"></script>
+    </main>
+
+    <script src="js/auth.js?v=4"></script>
 </body>
 </html>

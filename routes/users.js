@@ -5,24 +5,31 @@ const Item = require('../models/Item');
 const Notification = require('../models/Notification');
 const auth = require('../middleware/auth');
 const { getDynamicAchievements } = require('../lib/achievements');
+const { isProfileComplete, meetsProfileRequirements, isUsernameTaken } = require('../lib/accounts');
 const {
     validateIdParam,
     badRequest,
     cleanText,
     cleanImageUrl,
     cleanNumber,
-    USERNAME_RE
+    normalizeUsername,
+    usernameProblem,
+    normalizePhone
 } = require('../lib/validation');
 
 router.param('id', validateIdParam);
 
-// Fields that are never returned by the API.
-const HIDDEN_FIELDS = '-otpCode -otpExpires -tokenVersion';
-// Contact details are only shown to the account owner.
-const PRIVATE_FIELDS = ['email', 'phone', 'savedAuctions', 'isEmailVerified'];
+// Fields that are never returned by the API. (passwordHash and the legacy OTP
+// fields are excluded by the schema itself.)
+const HIDDEN_FIELDS = '-tokenVersion';
+// Contact details and account state are only shown to the account owner.
+const PRIVATE_FIELDS = ['email', 'phone', 'savedAuctions', 'isEmailVerified', 'passwordChangedAt', 'profileCompleted'];
 
 function profileFor(userDoc, viewerId) {
     const userObj = userDoc.toObject();
+    userObj.profileCompleted = isProfileComplete(userObj);
+    // isVerified is the legacy setup flag, not a verification badge.
+    delete userObj.isVerified;
     if (viewerId !== String(userDoc._id)) {
         for (const field of PRIVATE_FIELDS) delete userObj[field];
     }
@@ -76,8 +83,9 @@ router.get('/:id', auth.optional, async (req, res, next) => {
     }
 });
 
-// Update Profile
-router.put('/:id', auth, async (req, res, next) => {
+// Update Profile. Open to accounts that have not finished setup yet, because
+// this is how setup is finished.
+router.put('/:id', auth.allowIncompleteProfile, async (req, res, next) => {
     if (req.user.userId !== req.params.id) return res.status(403).json({ error: 'Unauthorized' });
     try {
         const currentUser = await User.findById(req.params.id);
@@ -96,17 +104,16 @@ router.put('/:id', auth, async (req, res, next) => {
 
         if (body.username !== undefined) {
             if (typeof body.username !== 'string') throw badRequest('Username must be text');
-            let cleanUsername = body.username.trim();
-            if (cleanUsername.startsWith('@')) {
-                cleanUsername = cleanUsername.substring(1);
-            }
-            if (cleanUsername !== currentUser.username) {
-                if (!USERNAME_RE.test(cleanUsername)) {
-                    throw badRequest('Username must be 3-30 characters: letters, numbers, underscores or dots');
+            const username = normalizeUsername(body.username);
+            // Unchanged apart from letter case: keep the stored spelling (older
+            // accounts may contain capitals; new ones are always lowercase).
+            if (username !== (currentUser.username || '').toLowerCase()) {
+                const problem = usernameProblem(username);
+                if (problem) throw badRequest(problem);
+                if (await isUsernameTaken(username, req.params.id)) {
+                    return res.status(400).json({ error: 'Username is already taken' });
                 }
-                const existing = await User.findOne({ username: cleanUsername, _id: { $ne: req.params.id } }).select('_id').lean();
-                if (existing) return res.status(400).json({ error: 'Username is already taken' });
-                set.username = cleanUsername;
+                set.username = username;
             }
         }
 
@@ -120,10 +127,13 @@ router.put('/:id', auth, async (req, res, next) => {
         }
 
         if (body.phone !== undefined) {
-            const phone = cleanText(body.phone, 'Phone', { max: 20 });
-            if (phone && !/^\+?[\d\s()-]{6,20}$/.test(phone)) throw badRequest('Phone number is not valid');
-            // Empty string would collide in the sparse unique index; remove the field instead.
-            if (phone) set.phone = phone; else unset.phone = 1;
+            if (body.phone === null || (typeof body.phone === 'string' && body.phone.trim() === '')) {
+                unset.phone = 1;
+            } else {
+                const phone = normalizePhone(body.phone);
+                if (!phone) throw badRequest('Phone number is not valid');
+                set.phone = phone;
+            }
         }
 
         const bio = cleanText(body.bio, 'Bio', { max: 500 });
@@ -145,14 +155,12 @@ router.put('/:id', auth, async (req, res, next) => {
             set.profilePhoto = photo;
         }
 
-        // Profile setup is complete once the required fields are present. Bio is
-        // optional in the setup form, so it must not be required here (it used
-        // to be, which sent users without a bio back to setup forever).
-        if (!currentUser.isVerified) {
-            const merged = { ...currentUser.toObject(), ...set };
-            if (merged.displayName && merged.username && Array.isArray(merged.interests) && merged.interests.length > 0) {
-                set.isVerified = true;
-            }
+        // Profile setup is complete once the required fields are present
+        // (lib/accounts.js). Only the server sets this flag; clients cannot
+        // send it. isVerified is the legacy name for the same thing.
+        if (!isProfileComplete(currentUser) && meetsProfileRequirements({ ...currentUser.toObject(), ...set })) {
+            set.profileCompleted = true;
+            set.isVerified = true;
         }
 
         const update = { $set: set };
@@ -164,7 +172,11 @@ router.put('/:id', auth, async (req, res, next) => {
 
         res.json(profileFor(user, req.user.userId));
     } catch (error) {
-        if (error.code === 11000) return res.status(400).json({ error: 'Username is already taken' });
+        if (error.code === 11000) {
+            // Production keeps the old unique phone index until the migration removes it.
+            const phone = error.keyPattern && error.keyPattern.phone;
+            return res.status(400).json({ error: phone ? 'This phone number is already linked to another account' : 'Username is already taken' });
+        }
         next(error);
     }
 });
