@@ -7,84 +7,169 @@
     <link rel="stylesheet" href="css/style.css">
     <script src="js/loader.js"></script>
     <style>
-        .auth-tab-group {
-            display: flex;
-            border-bottom: 1px solid var(--border-subtle);
-            margin-bottom: 2rem;
-        }
-        .auth-tab {
-            flex: 1;
-            text-align: center;
-            padding: 0.75rem;
-            color: var(--text-secondary);
-            font-weight: 600;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            transition: all var(--transition-fast);
-        }
-        .auth-tab.active {
-            color: var(--primary);
-            border-bottom-color: var(--primary);
-        }
-        .form-options {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.85rem;
-            margin-bottom: 1.5rem;
-        }
-        .remember-checkbox {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            cursor: pointer;
-            color: var(--text-secondary);
-        }
-        .forgot-link {
-            color: var(--primary);
-            text-decoration: none;
-            transition: color var(--transition-fast);
-        }
-        .forgot-link:hover {
-            color: var(--primary-hover);
-        }
-        .oauth-divider {
-            display: flex;
-            align-items: center;
-            margin: 2rem 0;
-            color: var(--text-muted);
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        .oauth-divider::before, .oauth-divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--border-subtle);
-        }
-        .oauth-divider::before { margin-right: 1rem; }
-        .oauth-divider::after { margin-left: 1rem; }
-        
-        .btn-google {
-            background: #FFFFFF;
-            color: #000000;
-            border: 1px solid #E5E7EB;
-            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.05);
-        }
-        .btn-google:hover {
-            background: #F3F4F6;
-            transform: translateY(-2px);
-        }
-        
-        /* Slide Animations */
-        .auth-card {
-            animation: card-reveal 0.5s var(--ease-spring);
+        /* ---------- Page shell: dark, flat, left-aligned (matches reference) ---------- */
+        body { background: #202020; }
+        .auth-container { background: #202020; }
+        .auth-card.card.glass-card {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+            max-width: 440px;
+            width: 100%;
+            padding: 2.5rem 1.5rem 2rem;
+            animation: card-reveal 0.4s var(--ease-spring);
         }
         @keyframes card-reveal {
-            from { transform: translateY(20px); opacity: 0; }
+            from { transform: translateY(12px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
         }
+
+        /* Header: back arrow + title */
+        .auth-header {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            margin-bottom: 2rem;
+        }
+        .auth-back {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2rem;
+            height: 2rem;
+            color: #fff;
+            border-radius: 50%;
+            text-decoration: none;
+        }
+        .auth-back:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        .auth-back svg { width: 1.4rem; height: 1.4rem; }
+        .auth-title {
+            margin: 0;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 0;
+        }
+
+        /* Floating-label field */
+        .field {
+            position: relative;
+            display: block;
+        }
+        .field input {
+            width: 100%;
+            height: 4.6rem;
+            padding: 1.7rem 1.25rem 0.6rem;
+            background: transparent;
+            border: 1px solid #5b5d60;
+            border-radius: 1.25rem;
+            color: #fff;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color var(--transition-fast);
+        }
+        .field input:hover { border-color: #8a8d91; }
+        .field input:focus { border-color: #e6e6e6; }
+        .field label {
+            position: absolute;
+            left: 1.25rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #a8abaf;
+            font-size: 1.05rem;
+            pointer-events: none;
+            transition: top 0.15s ease, font-size 0.15s ease, transform 0.15s ease;
+        }
+        .field input:focus + label,
+        .field input:not(:placeholder-shown) + label {
+            top: 0.95rem;
+            transform: none;
+            font-size: 0.82rem;
+        }
+        .field input.is-invalid { border-color: var(--danger); }
+        .field input[type="password"] { padding-right: 3.2rem; }
+        .pw-toggle {
+            position: absolute;
+            right: 0.9rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 2rem;
+            height: 2rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: none;
+            color: #a8abaf;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        .pw-toggle:hover { color: #fff; }
+        .pw-toggle:focus-visible { outline: 2px solid var(--primary); }
+        .pw-toggle svg { width: 1.2rem; height: 1.2rem; }
+
+        .auth-inline-error {
+            min-height: 1.1rem;
+            margin: 0.5rem 0 0 1rem;
+            color: var(--danger);
+            font-size: 0.82rem;
+        }
+
+        /* Pill buttons */
+        .pill-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 3.4rem;
+            border-radius: 999px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: filter var(--transition-fast), background var(--transition-fast);
+        }
+        .pill-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+        .pill-primary {
+            background: var(--primary);
+            color: #fff;
+            margin-top: 0.75rem;
+        }
+        .pill-primary:hover { filter: brightness(1.08); }
+        .pill-primary:disabled { opacity: 0.55; cursor: not-allowed; filter: none; }
+
+        .auth-help {
+            text-align: center;
+            margin: 1.5rem 0 0;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+        .auth-help a { color: #fff; text-decoration: none; }
+        .auth-help a:hover { text-decoration: underline; }
+
+        .auth-brand {
+            text-align: center;
+            margin-top: 3.5rem;
+            color: #fff;
+            font-weight: 800;
+            font-size: 1.1rem;
+            letter-spacing: 0.04em;
+            cursor: pointer;
+        }
+        .auth-brand small {
+            display: block;
+            margin-top: 0.25rem;
+            font-weight: 400;
+            font-size: 0.78rem;
+            letter-spacing: 0;
+            color: #a8abaf;
+        }
+
+        /* Shared helpers (OTP modal etc.) */
+        .forgot-link { color: var(--primary); text-decoration: none; transition: color var(--transition-fast); }
+        .forgot-link:hover { color: var(--primary-hover); }
         @keyframes shake {
             0%,100% { transform: translateX(0); }
             20% { transform: translateX(-8px); }
@@ -92,18 +177,7 @@
             60% { transform: translateX(-6px); }
             80% { transform: translateX(6px); }
         }
-        .auth-inline-error {
-            min-height: 1.1rem;
-            margin: 0.4rem 0 0;
-            color: var(--danger);
-            font-size: 0.82rem;
-        }
-        .otp-status {
-            min-height: 1.25rem;
-            margin: 0;
-            font-size: 0.85rem;
-            line-height: 1.4;
-        }
+        .otp-status { min-height: 1.25rem; margin: 0; font-size: 0.85rem; line-height: 1.4; }
         .otp-status.is-error { color: var(--danger); }
         .otp-status.is-success { color: var(--success); }
         .otp-status.is-info { color: var(--text-secondary); }
@@ -122,45 +196,58 @@
             font-weight: 600;
             margin-bottom: 1.25rem;
         }
+
+        @media (prefers-reduced-motion: reduce) {
+            .auth-card.card.glass-card { animation: none; }
+            .field label { transition: none; }
+        }
     </style>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
 </head>
 <body>
     <div class="auth-container">
         <div class="auth-card card glass-card">
-            <div class="logo-container" onclick="window.location.href='home.html'" style="cursor: pointer;">
-                <div class="logo-icon" aria-hidden="true" style="color: var(--primary); margin: 0 auto 0.75rem;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 100%; height: 100%;">
-    <path d="m15 5 4 4" />
-    <path d="m11 9 4 4" />
-    <path d="m13 7-8 8" />
-    <path d="M9 11l-4 4" />
-    <path d="m13 13-7 7" />
-    <path d="M20 20H10" />
-</svg>
-                </div>
-                <h1 class="logo-text">FLEXY</h1>
-                <p class="logo-subtext">Every Item Finds Its Value</p>
+            <div class="auth-header">
+                <a href="home.html" class="auth-back" aria-label="Back to home">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+                </a>
+                <h1 class="auth-title">Log in to FLEXY</h1>
             </div>
-            
-            <form id="login-form" class="auth-form" style="margin-top: 1.5rem;">
+
+            <form id="login-form" class="auth-form" novalidate>
                 <div class="form-group">
-                    <label for="email" style="color: var(--text-secondary); font-weight: 500; margin-bottom: 0.5rem; display: block;">Email Address</label>
-                    <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" required aria-describedby="email-error" style="width: 100%; background: var(--dark-3); border: 1px solid var(--border-glass); padding: 0.75rem 1rem; border-radius: var(--radius-md); color: var(--text-primary); font-size: 1rem; outline: none; transition: border-color var(--transition-fast);" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border-glass)'">
+                    <div class="field">
+                        <input type="email" id="email" name="email" placeholder=" " autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" required aria-describedby="email-error">
+                        <label for="email">Email address</label>
+                    </div>
                     <p id="email-error" class="auth-inline-error" role="alert" aria-live="polite"></p>
                 </div>
-                
-                <button type="submit" class="btn btn-primary btn-block" style="margin-top: 1.5rem; font-weight: 600;">
-                    <span class="btn-text" id="submit-btn-text">Continue</span>
+
+                <div class="form-group" style="margin-top: 0.25rem;">
+                    <div class="field">
+                        <input type="password" id="password" name="password" placeholder=" " autocomplete="current-password" required aria-describedby="password-error">
+                        <label for="password">Password</label>
+                        <button type="button" id="toggle-password" class="pw-toggle" aria-label="Show password" aria-pressed="false">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                    </div>
+                    <p id="password-error" class="auth-inline-error" role="alert" aria-live="polite"></p>
+                </div>
+
+                <button type="submit" class="pill-btn pill-primary">
+                    <span class="btn-text" id="submit-btn-text">Log in</span>
                 </button>
             </form>
-            
-            <div class="auth-footer" style="text-align: center; margin-top: 2rem;">
-                <p style="color: var(--text-secondary); font-size: 0.85rem;">Need help? <a href="#" class="forgot-link">Contact Support</a></p>
+
+            <p class="auth-help"><a href="#" id="forgot-password" class="forgot-link-plain">Forgotten password?</a></p>
+
+            <div class="auth-brand" onclick="window.location.href='home.html'">
+                FLEXY
+                <small>Every Item Finds Its Value</small>
             </div>
         </div>
     </div>
-    
+
     <!-- OTP Verification Modal -->
     <div id="otp-modal" class="modal">
         <div class="modal-content glass-card">
@@ -194,7 +281,20 @@
             </div>
         </div>
     </div>
-    
+
+    <script>
+        (function () {
+            var pw = document.getElementById('password');
+            var btn = document.getElementById('toggle-password');
+            if (!pw || !btn) return;
+            btn.addEventListener('click', function () {
+                var show = pw.type === 'password';
+                pw.type = show ? 'text' : 'password';
+                btn.setAttribute('aria-pressed', String(show));
+                btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+            });
+        })();
+    </script>
     <script src="js/notify.js?v=3"></script>
     <script src="js/auth.js?v=3"></script>
 </body>
