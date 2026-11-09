@@ -1,118 +1,26 @@
-const mongoose = require('mongoose');
 
-const UserSchema = new mongoose.Schema({
+const mongoose = require("mongoose");
+
+const userSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: true
+    },
+
     email: {
         type: String,
-        unique: true,
-        sparse: true, // sparse allows null values but ensures uniqueness for non-nulls
-        trim: true,
-        lowercase: true
-    },
-    phone: {
-        type: String,
-        unique: true,
-        sparse: true,
-        trim: true
-    },
-    username: {
-        type: String,
-        unique: true,
         required: true,
+        unique: true,
+        lowercase: true,
         trim: true
     },
-    displayName: {
-        type: String,
-        required: true,
-        trim: true
-    },
-    isVerified: {
-        type: Boolean,
-        default: false
-    },
-    bio: {
-        type: String,
-        maxLength: 500,
-        default: ''
-    },
-    avatarInitials: {
-        type: String,
-        default: 'U'
-    },
-    avatarUrl: {
-        type: String,
-        default: ''
-    },
-    coverUrl: {
-        type: String,
-        default: ''
-    },
-    reputation: {
-        type: String,
-        enum: ['Newcomer', 'Collector', 'Trusted', 'Elite'],
-        default: 'Newcomer'
-    },
-    achievements: [{
-        type: String
-    }],
-    showcaseCabinet: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Item'
-    }],
-    followers: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
-    }],
-    following: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
-    }],
-    communities: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Community' // Assuming Community model will exist
-    }],
-    interests: [{
-        type: String
-    }],
-    profilePhoto: {
-        type: String,
-        default: ''
-    },
-    isEmailVerified: {
-        type: Boolean,
-        default: false
-    },
-    isIdentityVerified: {
-        type: Boolean,
-        default: false
-    },
-    isTrustedSeller: {
-        type: Boolean,
-        default: false
-    },
-    salesCount: {
-        type: Number,
-        default: 0
-    },
-    auctionsCompleted: {
-        type: Number,
-        default: 0
-    },
-    savedAuctions: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Auction'
-    }],
-    otpCode: {
-        type: String
-    },
-    otpExpires: {
-        type: Date
-    },
-    // Embedded in refresh tokens; incrementing it revokes every refresh token
-    // issued to this account (used by logout).
-    tokenVersion: {
-        type: Number,
-        default: 0
-    }
-}, { timestamps: true });
 
-module.exports = mongoose.model('User', UserSchema);
+    password: {
+        type: String,
+        required: true
+    }
+}, {
+    timestamps: true
+});
+
+module.exports = mongoose.model("User", userSchema);
