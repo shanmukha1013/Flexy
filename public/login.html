@@ -1,301 +1,621 @@
+
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FLEXY - Authentication</title>
-    <link rel="stylesheet" href="css/style.css">
-    <script src="js/loader.js"></script>
+
+    <title>FLEXY - Login</title>
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
     <style>
-        /* ---------- Page shell: dark, flat, left-aligned (matches reference) ---------- */
-        body { background: #202020; }
-        .auth-container { background: #202020; }
-        .auth-card.card.glass-card {
-            background: transparent;
-            border: none;
-            box-shadow: none;
-            backdrop-filter: none;
-            -webkit-backdrop-filter: none;
-            max-width: 440px;
-            width: 100%;
-            padding: 2.5rem 1.5rem 2rem;
-            animation: card-reveal 0.4s var(--ease-spring);
-        }
-        @keyframes card-reveal {
-            from { transform: translateY(12px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        /* Header: back arrow + title */
-        .auth-header {
-            display: flex;
-            align-items: center;
-            gap: 1.25rem;
-            margin-bottom: 2rem;
-        }
-        .auth-back {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 2rem;
-            height: 2rem;
-            color: #fff;
-            border-radius: 50%;
-            text-decoration: none;
-        }
-        .auth-back:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-        .auth-back svg { width: 1.4rem; height: 1.4rem; }
-        .auth-title {
+        * {
             margin: 0;
-            font-size: 1.15rem;
-            font-weight: 700;
-            color: #fff;
-            letter-spacing: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        /* Floating-label field */
-        .field {
-            position: relative;
-            display: block;
+        :root {
+            --primary: #4b6021;
+            --primary-hover: #3d501a;
+            --text-primary: #202b3a;
+            --text-secondary: #58677b;
+            --border: #c9e9e4;
+            --background: #fcfaf7;
+            --input-background: #e7e6e1;
+            --danger: #dc2626;
+            --success: #22863a;
         }
-        .field input {
-            width: 100%;
-            height: 4.6rem;
-            padding: 1.7rem 1.25rem 0.6rem;
-            background: transparent;
-            border: 1px solid #5b5d60;
-            border-radius: 1.25rem;
-            color: #fff;
-            font-size: 1rem;
-            outline: none;
-            transition: border-color var(--transition-fast);
+
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            min-height: 100vh;
         }
-        .field input:hover { border-color: #8a8d91; }
-        .field input:focus { border-color: #e6e6e6; }
-        .field label {
-            position: absolute;
-            left: 1.25rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #a8abaf;
-            font-size: 1.05rem;
-            pointer-events: none;
-            transition: top 0.15s ease, font-size 0.15s ease, transform 0.15s ease;
-        }
-        .field input:focus + label,
-        .field input:not(:placeholder-shown) + label {
-            top: 0.95rem;
-            transform: none;
-            font-size: 0.82rem;
-        }
-        .field input.is-invalid { border-color: var(--danger); }
-        .field input[type="password"] { padding-right: 3.2rem; }
-        .pw-toggle {
-            position: absolute;
-            right: 0.9rem;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 2rem;
-            height: 2rem;
-            display: inline-flex;
-            align-items: center;
+
+        .auth-container {
+            min-height: 100vh;
+            display: flex;
             justify-content: center;
-            background: none;
-            border: none;
-            color: #a8abaf;
-            cursor: pointer;
-            border-radius: 50%;
+            align-items: center;
+            padding: 25px;
         }
-        .pw-toggle:hover { color: #fff; }
-        .pw-toggle:focus-visible { outline: 2px solid var(--primary); }
-        .pw-toggle svg { width: 1.2rem; height: 1.2rem; }
+
+        .auth-card {
+            width: 100%;
+            max-width: 530px;
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 17px;
+            padding: 48px 45px;
+            box-shadow: 0 14px 28px rgba(30, 42, 35, 0.08);
+            animation: card-reveal 0.5s ease;
+        }
+
+        @keyframes card-reveal {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .logo-container {
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            margin: 0 auto 12px;
+            color: var(--primary);
+        }
+
+        .logo-text {
+            font-size: 35px;
+            font-weight: 750;
+            letter-spacing: -1px;
+            color: var(--text-primary);
+        }
+
+        .logo-subtext {
+            color: var(--text-secondary);
+            font-size: 16px;
+            margin-top: 5px;
+        }
+
+        .auth-form {
+            margin-top: 43px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #344054;
+            font-size: 15px;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+
+        .form-group input {
+            width: 100%;
+            height: 55px;
+            padding: 0 18px;
+            border: 1px solid #d5d3cd;
+            border-radius: 12px;
+            background: var(--input-background);
+            color: var(--text-primary);
+            font-size: 16px;
+            outline: none;
+            transition: 0.2s ease;
+        }
+
+        .form-group input::placeholder {
+            color: #718096;
+        }
+
+        .form-group input:focus {
+            background: #ffffff;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(75, 96, 33, 0.12);
+        }
+
+        .password-wrapper {
+            position: relative;
+        }
+
+        .password-wrapper input {
+            padding-right: 75px;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            color: var(--primary);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .password-options {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: -10px;
+        }
+
+        .forgot-link {
+            color: var(--primary);
+            font-size: 13px;
+            text-decoration: none;
+            transition: 0.2s;
+        }
+
+        .forgot-link:hover {
+            color: var(--primary-hover);
+            text-decoration: underline;
+        }
+
+        .btn {
+            width: 100%;
+            min-height: 50px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: 0.25s ease;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 12px 24px rgba(45, 61, 24, 0.13);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-block {
+            display: block;
+            margin-top: 35px;
+        }
 
         .auth-inline-error {
-            min-height: 1.1rem;
-            margin: 0.5rem 0 0 1rem;
             color: var(--danger);
-            font-size: 0.82rem;
+            font-size: 12px;
+            margin-top: 6px;
+            min-height: 14px;
         }
 
-        /* Pill buttons */
-        .pill-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            height: 3.4rem;
-            border-radius: 999px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            border: 1px solid transparent;
-            transition: filter var(--transition-fast), background var(--transition-fast);
+        .auth-message {
+            display: none;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 13px;
         }
-        .pill-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
-        .pill-primary {
-            background: var(--primary);
-            color: #fff;
-            margin-top: 0.75rem;
-        }
-        .pill-primary:hover { filter: brightness(1.08); }
-        .pill-primary:disabled { opacity: 0.55; cursor: not-allowed; filter: none; }
 
-        .auth-help {
-            text-align: center;
-            margin: 1.5rem 0 0;
-            font-size: 0.95rem;
-            font-weight: 600;
-        }
-        .auth-help a { color: #fff; text-decoration: none; }
-        .auth-help a:hover { text-decoration: underline; }
-
-        .auth-brand {
-            text-align: center;
-            margin-top: 3.5rem;
-            color: #fff;
-            font-weight: 800;
-            font-size: 1.1rem;
-            letter-spacing: 0.04em;
-            cursor: pointer;
-        }
-        .auth-brand small {
+        .auth-message.error {
             display: block;
-            margin-top: 0.25rem;
-            font-weight: 400;
-            font-size: 0.78rem;
-            letter-spacing: 0;
-            color: #a8abaf;
+            color: #a12820;
+            background: #fff0ef;
         }
 
-        /* Shared helpers (OTP modal etc.) */
-        .forgot-link { color: var(--primary); text-decoration: none; transition: color var(--transition-fast); }
-        .forgot-link:hover { color: var(--primary-hover); }
-        @keyframes shake {
-            0%,100% { transform: translateX(0); }
-            20% { transform: translateX(-8px); }
-            40% { transform: translateX(8px); }
-            60% { transform: translateX(-6px); }
-            80% { transform: translateX(6px); }
+        .auth-message.success {
+            display: block;
+            color: #286332;
+            background: #edf7ed;
         }
-        .otp-status { min-height: 1.25rem; margin: 0; font-size: 0.85rem; line-height: 1.4; }
-        .otp-status.is-error { color: var(--danger); }
-        .otp-status.is-success { color: var(--success); }
-        .otp-status.is-info { color: var(--text-secondary); }
-        .otp-input:disabled { opacity: 0.6; }
-        #resend-otp[aria-disabled="true"] { pointer-events: none; opacity: 0.45; }
-        .otp-status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: rgba(249,115,22,0.1);
-            border: 1px solid rgba(249,115,22,0.3);
-            border-radius: 20px;
-            padding: 0.4rem 1rem;
-            font-size: 0.8rem;
+
+        .auth-footer {
+            text-align: center;
+            margin-top: 25px;
+        }
+
+        .auth-footer p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .auth-footer a {
             color: var(--primary);
-            font-weight: 600;
-            margin-bottom: 1.25rem;
+            text-decoration: none;
+            font-weight: 500;
         }
 
-        @media (prefers-reduced-motion: reduce) {
-            .auth-card.card.glass-card { animation: none; }
-            .field label { transition: none; }
+        .auth-footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 600px) {
+            .auth-container {
+                padding: 18px;
+            }
+
+            .auth-card {
+                padding: 38px 24px;
+            }
+
+            .logo-text {
+                font-size: 31px;
+            }
+
+            .auth-form {
+                margin-top: 35px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .auth-card {
+                padding: 30px 18px;
+            }
+
+            .form-group input {
+                font-size: 14px;
+            }
         }
     </style>
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
 </head>
+
 <body>
+
     <div class="auth-container">
-        <div class="auth-card card glass-card">
-            <div class="auth-header">
-                <a href="home.html" class="auth-back" aria-label="Back to home">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg>
-                </a>
-                <h1 class="auth-title">Log in to FLEXY</h1>
+
+        <div class="auth-card">
+
+            <!-- FLEXY LOGO -->
+
+            <div class="logo-container"
+                 onclick="window.location.href='home.html'">
+
+                <div class="logo-icon">
+
+                    <svg viewBox="0 0 24 24"
+                         fill="none"
+                         stroke="currentColor"
+                         stroke-width="2.2"
+                         stroke-linecap="round"
+                         stroke-linejoin="round"
+                         width="100%"
+                         height="100%">
+
+                        <path d="m15 5 4 4"/>
+                        <path d="m11 9 4 4"/>
+                        <path d="m13 7-8 8"/>
+                        <path d="M9 11l-4 4"/>
+                        <path d="m13 13-7 7"/>
+                        <path d="M20 20H10"/>
+
+                    </svg>
+
+                </div>
+
+                <h1 class="logo-text">FLEXY</h1>
+
+                <p class="logo-subtext">
+                    Every Item Finds Its Value
+                </p>
+
             </div>
 
-            <form id="login-form" class="auth-form" novalidate>
+
+            <!-- API ERROR / SUCCESS MESSAGE -->
+
+            <div id="auth-message"
+                 class="auth-message"
+                 role="alert"
+                 aria-live="polite">
+            </div>
+
+
+            <!-- LOGIN FORM -->
+
+            <form id="login-form" class="auth-form">
+
                 <div class="form-group">
-                    <div class="field">
-                        <input type="email" id="email" name="email" placeholder=" " autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" required aria-describedby="email-error">
-                        <label for="email">Email address</label>
-                    </div>
-                    <p id="email-error" class="auth-inline-error" role="alert" aria-live="polite"></p>
+
+                    <label for="email">Email Address</label>
+
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        placeholder="you@example.com"
+                        autocomplete="email"
+                        required>
+
+                    <p id="email-error"
+                       class="auth-inline-error"></p>
+
                 </div>
 
-                <div class="form-group" style="margin-top: 0.25rem;">
-                    <div class="field">
-                        <input type="password" id="password" name="password" placeholder=" " autocomplete="current-password" required aria-describedby="password-error">
-                        <label for="password">Password</label>
-                        <button type="button" id="toggle-password" class="pw-toggle" aria-label="Show password" aria-pressed="false">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+
+                <!-- PASSWORD -->
+
+                <div class="form-group">
+
+                    <label for="password">Password</label>
+
+                    <div class="password-wrapper">
+
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            placeholder="Enter your password"
+                            autocomplete="current-password"
+                            required>
+
+                        <button
+                            type="button"
+                            class="toggle-password"
+                            id="toggle-password">
+
+                            Show
+
                         </button>
+
                     </div>
-                    <p id="password-error" class="auth-inline-error" role="alert" aria-live="polite"></p>
+
+                    <p id="password-error"
+                       class="auth-inline-error"></p>
+
                 </div>
 
-                <button type="submit" class="pill-btn pill-primary">
-                    <span class="btn-text" id="submit-btn-text">Log in</span>
+
+                <!-- FORGOT PASSWORD -->
+
+                <div class="password-options">
+
+                    <a href="forgot-password.html"
+                       class="forgot-link">
+
+                        Forgot Password?
+
+                    </a>
+
+                </div>
+
+
+                <!-- LOGIN BUTTON -->
+
+                <button
+                    type="submit"
+                    class="btn btn-primary btn-block"
+                    id="login-button">
+
+                    <span id="submit-btn-text">
+                        Continue
+                    </span>
+
                 </button>
+
             </form>
 
-            <p class="auth-help"><a href="#" id="forgot-password" class="forgot-link-plain">Forgotten password?</a></p>
 
-            <div class="auth-brand" onclick="window.location.href='home.html'">
-                FLEXY
-                <small>Every Item Finds Its Value</small>
+            <!-- REGISTER LINK -->
+
+            <div class="auth-footer">
+
+                <p>
+                    Don't have an account?
+
+                    <a href="register.html">
+                        Create Account
+                    </a>
+                </p>
+
             </div>
+
+
+            <!-- SUPPORT -->
+
+            <div class="auth-footer">
+
+                <p>
+                    Need help?
+
+                    <a href="mailto:support@example.com">
+                        Contact Support
+                    </a>
+                </p>
+
+            </div>
+
         </div>
+
     </div>
 
-    <!-- OTP Verification Modal -->
-    <div id="otp-modal" class="modal">
-        <div class="modal-content glass-card">
-            <div class="modal-header">
-                <h3>Verify Security Code</h3>
-                <button type="button" class="close-modal" aria-label="Close">&times;</button>
-            </div>
-            <div class="modal-body" style="text-align: center;">
-                <div class="otp-status-badge">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-                    Verification code sent
-                </div>
-                <p id="otp-message" style="color: var(--text-secondary); font-size: 0.92rem; margin-bottom: 1.5rem; line-height: 1.6;">Enter the 6-digit code sent to your email.</p>
-                <div class="otp-container" role="group" aria-label="6-digit verification code">
-                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" autocomplete="one-time-code" aria-label="Digit 1 of 6">
-                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" aria-label="Digit 2 of 6">
-                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" aria-label="Digit 3 of 6">
-                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" aria-label="Digit 4 of 6">
-                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" aria-label="Digit 5 of 6">
-                    <input type="text" class="otp-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" aria-label="Digit 6 of 6">
-                </div>
-                <p id="otp-status" class="otp-status" role="alert" aria-live="polite"></p>
-                <div class="otp-actions" style="margin-top: 1.25rem;">
-                    <button id="verify-otp" type="button" class="btn btn-primary btn-block" style="font-weight: 600;">Verify &amp; Continue</button>
-                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 1rem;">
-                        Didn't receive code? <a href="#" id="resend-otp" class="forgot-link" role="button">Resend code<span id="otp-countdown" style="color: var(--text-muted);"></span></a>
-                    </p>
-                    <p id="otp-expiry" style="color: var(--text-muted); font-size: 0.78rem; margin-top: 0.5rem;">Code expires in 5 minutes</p>
-                    <p style="font-size: 0.85rem; margin-top: 0.75rem;"><a href="#" id="change-email" class="forgot-link">Use a different email</a></p>
-                </div>
-            </div>
-        </div>
-    </div>
+
+    <!-- INTERNAL JAVASCRIPT -->
 
     <script>
-        (function () {
-            var pw = document.getElementById('password');
-            var btn = document.getElementById('toggle-password');
-            if (!pw || !btn) return;
-            btn.addEventListener('click', function () {
-                var show = pw.type === 'password';
-                pw.type = show ? 'text' : 'password';
-                btn.setAttribute('aria-pressed', String(show));
-                btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
-            });
-        })();
+        
+// API BASE URL
+const API_BASE = "https://YOUR-RENDER-API.onrender.com";
+
+// SHOW / HIDE PASSWORD
+document.getElementById("toggle-password")
+    .addEventListener("click", function () {
+
+        const password = document.getElementById("password");
+
+        if (password.type === "password") {
+            password.type = "text";
+            this.textContent = "Hide";
+        } else {
+            password.type = "password";
+            this.textContent = "Show";
+        }
+    });
+
+
+// DISPLAY MESSAGE
+function showMessage(message, type) {
+
+    const box = document.getElementById("auth-message");
+
+    box.textContent = message;
+    box.className = "auth-message " + type;
+}
+
+
+// EMAIL VALIDATION
+function validateEmail(email) {
+
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+
+// LOGIN FORM
+document.getElementById("login-form")
+    .addEventListener("submit", async function (event) {
+
+        event.preventDefault();
+
+        const email = document.getElementById("email")
+            .value.trim().toLowerCase();
+
+        const password = document.getElementById("password").value;
+
+        const emailError = document.getElementById("email-error");
+        const passwordError = document.getElementById("password-error");
+
+        const button = document.getElementById("login-button");
+        const buttonText = document.getElementById("submit-btn-text");
+
+        // Clear previous errors
+        emailError.textContent = "";
+        passwordError.textContent = "";
+
+        // Validate email
+        if (!validateEmail(email)) {
+
+            emailError.textContent =
+                "Please enter a valid email address.";
+
+            return;
+        }
+
+        // Validate password
+        if (!password) {
+
+            passwordError.textContent =
+                "Password is required.";
+
+            return;
+        }
+
+        // Disable button while processing
+        button.disabled = true;
+        buttonText.textContent = "Signing in...";
+
+        try {
+
+            // Send login request to Express API
+            const response = await fetch(
+                `${API_BASE}/api/auth/login`,
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    credentials: "include",
+
+                    body: JSON.stringify({
+                        email: email,
+                        password: password
+                    })
+                }
+            );
+
+            // Handle invalid JSON responses
+            const data = await response.json();
+
+            // Handle authentication failure
+            if (!response.ok) {
+
+                throw new Error(
+                    data.message || "Invalid email or password."
+                );
+            }
+
+            // Verify access token exists
+            const accessToken = data.accessToken;
+
+            if (!accessToken) {
+                throw new Error(
+                    "Authentication response is incomplete."
+                );
+            }
+
+            // Store short-lived access token
+            sessionStorage.setItem(
+                "accessToken",
+                accessToken
+            );
+
+            // Store authenticated user details
+            sessionStorage.setItem(
+                "user",
+                JSON.stringify(data.user)
+            );
+
+            // Display success
+            showMessage(
+                "Login successful! Redirecting...",
+                "success"
+            );
+
+            // Redirect to dashboard
+            setTimeout(() => {
+
+                window.location.href = "dashboard.html";
+
+            }, 800);
+
+        } catch (error) {
+
+            console.error("Login error:", error);
+
+            showMessage(
+                error.message || "Unable to connect to server.",
+                "error"
+            );
+
+            button.disabled = false;
+            buttonText.textContent = "Continue";
+        }
+
+    });
+
+
+        
     </script>
-    <script src="js/notify.js?v=3"></script>
-    <script src="js/auth.js?v=3"></script>
+
 </body>
 </html>
