@@ -1,4 +1,5 @@
 const express = require('express');
+const bcrypt = require('bcrypt');
 const router = express.Router();
 const User = require('../models/User');
 const OTPVerification = require('../models/OTPVerification');
@@ -123,6 +124,131 @@ async function createUserForEmail(email) {
     }
     throw new Error('Could not allocate a unique username');
 }
+
+function sessionUser(user) {
+    return {
+        _id: user._id,
+        name: user.name,
+        email: user.email
+    };
+}
+
+// Register using name, email and password
+router.post('/register', async (req, res, next) => {
+    try {
+        const { name, email: rawEmail, password } = req.body || {};
+
+        if (!name || !rawEmail || !password) {
+            return res.status(400).json({
+                error: 'Name, email and password are required'
+            });
+        }
+
+        const cleanName = name.trim();
+        const email = normalizeEmail(rawEmail);
+
+        if (!cleanName) {
+            return res.status(400).json({ error: 'Please enter your name' });
+        }
+
+        if (!email) {
+            return res.status(400).json({ error: 'Please enter a valid email address' });
+        }
+
+        if (typeof password !== 'string' || password.length < 8) {
+            return res.status(400).json({
+                error: 'Password must contain at least 8 characters'
+            });
+        }
+
+        const existingUser = await User.findOne({ email });
+
+        if (existingUser) {
+            return res.status(409).json({
+                error: 'An account with this email already exists'
+            });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 12);
+
+        const user = await User.create({
+            name: cleanName,
+            email,
+            password: hashedPassword
+        });
+
+        return res.status(201).json({
+            message: 'Account created successfully. Please log in.'
+        });
+
+    } catch (error) {
+        if (error.code === 11000) {
+            return res.status(409).json({
+                error: 'An account with this email already exists'
+            });
+        }
+
+        next(error);
+    }
+});
+
+// Login using email and password
+router.post('/login', async (req, res, next) => {
+    try {
+        const { config } = req.app.locals;
+        const { email: rawEmail, password } = req.body || {};
+
+        if (!rawEmail || !password) {
+            return res.status(400).json({
+                error: 'Email and password are required'
+            });
+        }
+
+        const email = normalizeEmail(rawEmail);
+
+        if (!email) {
+            return res.status(400).json({
+                error: 'Please enter a valid email address'
+            });
+        }
+
+        // Explicitly retrieve the password hash
+        const user = await User.findOne({ email }).select('+password');
+
+        if (!user) {
+            return res.status(401).json({
+                error: 'Invalid email or password'
+            });
+        }
+
+        const passwordMatches = await bcrypt.compare(
+            password,
+            user.password
+        );
+
+        if (!passwordMatches) {
+            return res.status(401).json({
+                error: 'Invalid email or password'
+            });
+        }
+
+        const accessToken = issueSession(res, config, user);
+
+        return res.json({
+            message: 'Login successful',
+            token: accessToken,
+            user: {
+                _id: user._id,
+                name: user.name,
+                email: user.email
+            }
+        });
+
+    } catch (error) {
+        next(error);
+    }
+});
+
 
 // Request OTP
 router.post('/request-otp', async (req, res, next) => {
