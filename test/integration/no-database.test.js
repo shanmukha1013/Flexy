@@ -14,24 +14,29 @@ describe('without a database connection', () => {
         assert.match(res.body.error, /database is unavailable/i);
         assert.ok(Date.now() - started < 2000);
 
-        const otp = await request(app).post('/api/auth/request-otp').send({ email: 'a@example.test' });
-        assert.equal(otp.status, 503);
+        const signup = await request(app).post('/api/auth/signup').send(h.signupFields());
+        assert.equal(signup.status, 503);
+        const login = await request(app).post('/api/auth/login').send({ identifier: 'someone', password: h.PASSWORD });
+        assert.equal(login.status, 503);
+        assert.equal(login.headers['set-cookie'], undefined);
     });
 
     test('the health endpoint reports the degraded state', async () => {
-        const { app } = h.buildApp({ emailService: h.createFakeEmailService({ configured: false }) });
+        const { app } = h.buildApp();
         const res = await request(app).get('/api/health');
         assert.equal(res.status, 503);
         assert.equal(res.body.status, 'degraded');
         assert.equal(res.body.database, 'disconnected');
-        assert.equal(res.body.email, 'not_configured');
+        assert.equal(res.body.email, undefined);
     });
 
     test('the static frontend is still served', async () => {
         const { app } = h.buildApp();
-        const res = await request(app).get('/login.html');
-        assert.equal(res.status, 200);
-        assert.match(res.text, /FLEXY/);
+        for (const page of ['/login.html', '/signup.html', '/profile-setup.html', '/reset-password.html']) {
+            const res = await request(app).get(page);
+            assert.equal(res.status, 200, page);
+            assert.match(res.text, /FLEXY/, page);
+        }
     });
 });
 

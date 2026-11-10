@@ -336,13 +336,13 @@
 
                 <div class="form-group">
 
-                    <label for="email">Email Address</label>
+                    <label for="email">Email Address or Username</label>
 
                     <input
-                        type="email"
+                        type="text"
                         id="email"
                         name="email"
-                        placeholder="you@example.com"
+                        placeholder="you@example.com or username"
                         autocomplete="email"
                         required>
 
@@ -452,9 +452,19 @@
     <!-- INTERNAL JAVASCRIPT -->
 
     <script>
-        
-// API BASE URL
-const API_BASE = "https://flexy-peach.vercel.app";
+
+// API BACKEND CONFIGURATION
+const PRODUCTION_BACKEND_URL = 'https://flexy-backend-pgw7.onrender.com';
+const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const API_BASE = (isLocal ? 'http://' + window.location.hostname + ':3001' : PRODUCTION_BACKEND_URL) + '/api';
+
+// Redirect if already authenticated
+(function checkExistingSession() {
+    const existingToken = localStorage.getItem('flexy_token') || sessionStorage.getItem('accessToken');
+    if (existingToken && window.location.search.indexOf('logout=1') === -1) {
+        // User already has an active session
+    }
+})();
 
 // SHOW / HIDE PASSWORD
 document.getElementById("toggle-password")
@@ -482,21 +492,14 @@ function showMessage(message, type) {
 }
 
 
-// EMAIL VALIDATION
-function validateEmail(email) {
-
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-
 // LOGIN FORM
 document.getElementById("login-form")
     .addEventListener("submit", async function (event) {
 
         event.preventDefault();
 
-        const email = document.getElementById("email")
-            .value.trim().toLowerCase();
+        const identifier = document.getElementById("email")
+            .value.trim();
 
         const password = document.getElementById("password").value;
 
@@ -510,21 +513,17 @@ document.getElementById("login-form")
         emailError.textContent = "";
         passwordError.textContent = "";
 
-        // Validate email
-        if (!validateEmail(email)) {
-
+        // Validate identifier
+        if (!identifier) {
             emailError.textContent =
-                "Please enter a valid email address.";
-
+                "Please enter your email address or username.";
             return;
         }
 
         // Validate password
         if (!password) {
-
             passwordError.textContent =
                 "Password is required.";
-
             return;
         }
 
@@ -536,7 +535,7 @@ document.getElementById("login-form")
 
             // Send login request to Express API
             const response = await fetch(
-                `${API_BASE}/api/auth/login`,
+                `${API_BASE}/auth/login`,
                 {
                     method: "POST",
 
@@ -547,56 +546,85 @@ document.getElementById("login-form")
                     credentials: "include",
 
                     body: JSON.stringify({
-                        email: email,
+                        identifier: identifier,
+                        email: identifier,
                         password: password
                     })
                 }
             );
 
-            // Handle invalid JSON responses
-            const data = await response.json();
+            // Safe parsing: Never blindly call response.json()
+            let data = null;
+            const responseText = await response.text();
+            if (responseText && responseText.trim().length > 0) {
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseError) {
+                    console.warn("Server response was not JSON:", responseText);
+                }
+            }
 
             // Handle authentication failure
             if (!response.ok) {
-
-                throw new Error(
-                    data.message || "Invalid email or password."
-                );
+                let errorMsg = "";
+                if (data && (data.error || data.message)) {
+                    errorMsg = data.error || data.message;
+                } else {
+                    switch (response.status) {
+                        case 400:
+                            errorMsg = "Please enter your username or email and your password.";
+                            break;
+                        case 401:
+                            errorMsg = "Incorrect username, email or password.";
+                            break;
+                        case 404:
+                            errorMsg = "Login service endpoint not found (404).";
+                            break;
+                        case 405:
+                            errorMsg = "Method Not Allowed (405). Please check backend route configuration.";
+                            break;
+                        case 429:
+                            errorMsg = "Too many login attempts. Please wait 15 minutes and try again.";
+                            break;
+                        case 500:
+                            errorMsg = "Server error occurred. Please try again shortly.";
+                            break;
+                        default:
+                            errorMsg = "Login failed (HTTP " + response.status + "). Please try again.";
+                    }
+                }
+                throw new Error(errorMsg);
             }
 
             // Verify access token exists
-            const accessToken = data.accessToken;
+            const token = (data && (data.token || data.accessToken)) || null;
 
-            if (!accessToken) {
+            if (!token) {
                 throw new Error(
                     "Authentication response is incomplete."
                 );
             }
 
-            // Store short-lived access token
-            sessionStorage.setItem(
-                "accessToken",
-                accessToken
-            );
+            // Store token in both localStorage (for app/profile/dashboard) and sessionStorage
+            localStorage.setItem("flexy_token", token);
+            sessionStorage.setItem("accessToken", token);
 
-            // Store authenticated user details
-            sessionStorage.setItem(
-                "user",
-                JSON.stringify(data.user)
-            );
+            // Store authenticated user details in both localStorage and sessionStorage
+            if (data.user) {
+                localStorage.setItem("flexy_user", JSON.stringify(data.user));
+                sessionStorage.setItem("user", JSON.stringify(data.user));
+            }
 
             // Display success
             showMessage(
-                "Login successful! Redirecting...",
+                "Login successful! Redirecting to profile...",
                 "success"
             );
 
-            // Redirect to dashboard
+            // Redirect to profile
             setTimeout(() => {
-
-                window.location.href = "dashboard.html";
-
-            }, 800);
+                window.location.href = "profile.html";
+            }, 600);
 
         } catch (error) {
 
@@ -613,9 +641,7 @@ document.getElementById("login-form")
 
     });
 
-
-        
-    </script>
+</script>
 
 </body>
 </html>

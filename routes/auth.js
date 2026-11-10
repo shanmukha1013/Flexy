@@ -1,28 +1,37 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
-const OTPVerification = require('../models/OTPVerification');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const auth = require('../middleware/auth');
 const { getDynamicAchievements } = require('../lib/achievements');
-const { normalizeEmail, isObjectId } = require('../lib/validation');
-const { EmailNotConfiguredError, maskEmail } = require('../lib/email');
 const {
-    OTP_TTL_MS,
-    OTP_MAX_ATTEMPTS,
-    OTP_RESEND_COOLDOWN_MS,
-    OTP_SEND_WINDOW_MS,
-    OTP_MAX_SENDS_PER_WINDOW,
-    generateOtp,
-    hashOtp,
-    otpMatches,
-    isWellFormedOtp
-} = require('../lib/otp');
+    isObjectId,
+    normalizeEmail,
+    normalizeUsername,
+    usernameProblem,
+    normalizePhone,
+    parseLoginIdentifier
+} = require('../lib/validation');
+const {
+    hashPassword,
+    verifyPassword,
+    needsRehash,
+    burnVerificationTime,
+    passwordProblem
+} = require('../lib/passwords');
+const { isProfileComplete, findAccount, isUsernameTaken, isEmailTaken } = require('../lib/accounts');
+const { findPasswordSetupToken, consumePasswordSetupToken } = require('../lib/password-setup');
 
 const REFRESH_COOKIE = 'refreshToken';
 const REFRESH_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-const INVALID_CODE_ERROR = 'Invalid or expired verification code. Please request a new one.';
+// One message for an unknown account, an account without a password and a
+// wrong password, so the login form cannot be used to discover accounts.
+const INVALID_CREDENTIALS = 'Incorrect username, email or password.';
+const INVALID_LINK = 'This password link is invalid, has expired or was already used. Ask for a new one.';
+const FIX_FIELDS = 'Please fix the highlighted fields.';
+// Anything longer cannot be a valid password, so it is rejected without hashing.
+const MAX_LOGIN_PASSWORD_LENGTH = 1024;
 
 // Helper to parse cookie from headers
 function getCookie(req, name) {
@@ -54,21 +63,26 @@ function cookieOptions(config) {
 function sessionUser(user) {
     return {
         _id: user._id,
+        id: user._id,
+        name: user.displayName || user.name || '',
+        displayName: user.displayName || user.name || '',
         email: user.email,
+        phone: user.phone || '',
         username: user.username,
-        displayName: user.displayName,
         profilePhoto: user.profilePhoto || '',
         avatarUrl: user.avatarUrl || user.profilePhoto || '',
         avatarInitials: user.avatarInitials,
         bio: user.bio || '',
         interests: user.interests || [],
-        isVerified: user.isVerified
+        profileCompleted: isProfileComplete(user)
     };
 }
 
+// `pc` (profile completed) lets the auth middleware skip a database lookup for
+// finished profiles. It is signed, so a client cannot set it.
 function signAccessToken(config, user) {
     return jwt.sign(
-        { userId: user._id.toString(), email: user.email },
+        { userId: user._id.toString(), pc: isProfileComplete(user) },
         config.jwt.accessSecret,
         { expiresIn: config.jwt.accessTtl, algorithm: 'HS256' }
     );
@@ -95,230 +109,307 @@ function verifyRefreshToken(config, token) {
     }
 }
 
-function rateLimited(res, retryAfterMs, error) {
-    const retryAfter = Math.max(1, Math.ceil(retryAfterMs / 1000));
-    res.set('Retry-After', String(retryAfter));
-    return res.status(429).json({ error, retryAfter });
+// These endpoints set or use the refresh cookie, which production sends
+// cross-site (SameSite=None). Refusing browser requests from other origins
+// stops cross-site request forgery (logging a victim into an attacker's
+// account, or out of their own). Browsers always send Origin on cross-origin
+// requests; clients that send none (curl, health checks) carry no victim cookies.
+router.use((req, res, next) => {
+    if (req.method === 'GET' || req.method === 'HEAD') return next();
+    const origin = req.get('origin');
+    if (!origin) return next();
+    const { corsOrigins, isProduction } = req.app.locals.config;
+    if (corsOrigins.includes(origin) || origin === `${req.protocol}://${req.get('host')}`) return next();
+    if (!isProduction && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'))) return next();
+    res.status(403).json({ error: 'This request did not come from Flexy.' });
+});
+
+function fieldErrors(res, status, fields, error = FIX_FIELDS) {
+    return res.status(status).json({ error, fields });
 }
 
-async function createUserForEmail(email) {
-    const tempDisplayName = email.split('@')[0].slice(0, 50);
-    // Retry on the (very unlikely) collision of the random temporary username.
-    for (let attempt = 0; attempt < 3; attempt++) {
+function duplicateFields(keyPattern = {}) {
+    if (keyPattern.username) return { username: 'This username is taken. Try another one.' };
+    if (keyPattern.email) return { email: 'An account with this email already exists. Log in instead.' };
+    // Production databases may still carry the old unique phone index until
+    // scripts/migrate-password-auth.js removes it.
+    if (keyPattern.phone) return { phone: 'This phone number is already linked to another account.' };
+    return { username: 'This username or email is already in use.' };
+}
+
+function validateSignup(body) {
+    const errors = {};
+    const values = {};
+
+    const rawFullName = body.fullName !== undefined ? body.fullName : body.name;
+    const fullName = typeof rawFullName === 'string' ? rawFullName.replace(/[<>]/g, '').replace(/\s+/g, ' ').trim() : '';
+    if (!fullName) errors.fullName = 'Enter your full name';
+    else if (fullName.length > 50) errors.fullName = 'Use at most 50 characters';
+    else values.displayName = fullName;
+
+    const username = normalizeUsername(body.username);
+    const usernameError = usernameProblem(username);
+    if (usernameError) errors.username = usernameError;
+    else values.username = username;
+
+    if (typeof body.phone !== 'string' || !body.phone.trim()) {
+        errors.phone = 'Enter your phone number';
+    } else {
+        const phone = normalizePhone(body.phone);
+        if (phone) values.phone = phone;
+        else errors.phone = 'Enter a valid phone number with 7-15 digits, like +91 98765 43210';
+    }
+
+    if (typeof body.email !== 'string' || !body.email.trim()) {
+        errors.email = 'Enter your email address';
+    } else {
+        const email = normalizeEmail(body.email);
+        if (email) values.email = email;
+        else errors.email = 'Enter a valid email address, like name@example.com';
+    }
+
+    const passwordError = passwordProblem(body.password, values);
+    if (passwordError) errors.password = passwordError;
+
+    if (typeof body.confirmPassword !== 'string' || body.confirmPassword.length === 0) {
+        errors.confirmPassword = 'Re-enter your password';
+    } else if (body.confirmPassword !== body.password) {
+        errors.confirmPassword = 'Passwords do not match';
+    }
+
+    return { values, errors };
+}
+
+// Create an account. Nothing is verified here: the email and phone number are
+// stored as given and never shown as verified.
+
+// Register endpoint specifically for register.html (and general registration)
+router.post('/register', async (req, res, next) => {
+    try {
+        const { config } = req.app.locals;
+        const body = req.body || {};
+        const errors = {};
+        const values = {};
+
+        // Name / Full Name
+        const rawName = body.name !== undefined ? body.name : body.fullName;
+        const cleanName = typeof rawName === 'string'
+            ? rawName.replace(/[<>]/g, '').replace(/\s+/g, ' ').trim()
+            : '';
+        if (!cleanName) {
+            errors.name = 'Please enter your full name.';
+        } else if (cleanName.length < 2) {
+            errors.name = 'Please enter your full name (at least 2 characters).';
+        } else if (cleanName.length > 50) {
+            errors.name = 'Use at most 50 characters.';
+        } else {
+            values.displayName = cleanName;
+        }
+
+        // Email
+        if (typeof body.email !== 'string' || !body.email.trim()) {
+            errors.email = 'Please enter your email address.';
+        } else {
+            const email = normalizeEmail(body.email);
+            if (email) values.email = email;
+            else errors.email = 'Please enter a valid email address.';
+        }
+
+        // Password
+        const password = typeof body.password === 'string' ? body.password : '';
+        if (!password) {
+            errors.password = 'Password is required.';
+        } else if (password.length < 8) {
+            errors.password = 'Password must contain at least 8 characters.';
+        } else if (password.length > 128) {
+            errors.password = 'Password must not exceed 128 characters.';
+        } else {
+            const pError = passwordProblem(password, values);
+            if (pError) errors.password = pError;
+        }
+
+        // Confirm Password (validated if provided)
+        const confirmPassword = body.confirmPassword !== undefined ? body.confirmPassword : body['confirm-password'];
+        if (confirmPassword !== undefined && confirmPassword !== null) {
+            if (typeof confirmPassword !== 'string' || confirmPassword.length === 0) {
+                errors.confirmPassword = 'Re-enter your password.';
+            } else if (confirmPassword !== password) {
+                errors.confirmPassword = 'Passwords do not match.';
+            }
+        }
+
+        // Optional Username
+        if (body.username !== undefined && String(body.username).trim()) {
+            const username = normalizeUsername(body.username);
+            const usernameError = usernameProblem(username);
+            if (usernameError) errors.username = usernameError;
+            else values.username = username;
+        }
+
+        // Optional Phone
+        if (body.phone !== undefined && String(body.phone).trim()) {
+            const phone = normalizePhone(body.phone);
+            if (phone) values.phone = phone;
+            else errors.phone = 'Enter a valid phone number with 7-15 digits, like +91 98765 43210';
+        }
+
+        if (Object.keys(errors).length > 0) {
+            return fieldErrors(res, 400, errors, errors.name || errors.email || errors.password || errors.confirmPassword || FIX_FIELDS);
+        }
+
+        // Duplicate Email check
+        const emailTaken = await isEmailTaken(values.email);
+        if (emailTaken) {
+            return fieldErrors(res, 409, { email: 'An account with this email already exists. Log in instead.' }, 'An account with this email already exists. Log in instead.');
+        }
+
+        // Allocate unique username if not provided
+        if (!values.username) {
+            let baseSeed = (values.displayName || values.email.split('@')[0])
+                .toLowerCase()
+                .replace(/[^a-z0-9._]/g, '')
+                .replace(/^\.+|\.+$/g, '')
+                .replace(/\.{2,}/g, '.');
+            if (baseSeed.length < 3) baseSeed = 'user_' + baseSeed;
+            if (baseSeed.length > 20) baseSeed = baseSeed.slice(0, 20);
+
+            let candidate = baseSeed;
+            let attempt = 0;
+            while (await isUsernameTaken(candidate)) {
+                attempt++;
+                candidate = `${baseSeed.slice(0, 22)}_${crypto.randomBytes(2).toString('hex')}`;
+                if (attempt > 15) {
+                    candidate = `user_${crypto.randomBytes(4).toString('hex')}`;
+                    break;
+                }
+            }
+            values.username = candidate;
+        } else {
+            const usernameTaken = await isUsernameTaken(values.username);
+            if (usernameTaken) {
+                return fieldErrors(res, 409, { username: 'This username is taken. Try another one.' }, 'This username is taken. Try another one.');
+            }
+        }
+
+        const passwordHash = await hashPassword(password);
+        const initials = values.displayName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'U';
+
+        let user;
         try {
-            return await User.create({
-                email,
-                username: 'user_' + crypto.randomBytes(4).toString('hex'),
-                displayName: tempDisplayName,
-                isVerified: false,
+            user = await User.create({
+                name: values.displayName,
+                displayName: values.displayName,
+                username: values.username,
+                email: values.email,
+                phone: values.phone || '',
+                passwordHash,
+                profileCompleted: true,
+                isVerified: true,
                 isEmailVerified: true,
-                avatarInitials: tempDisplayName.substring(0, 2).toUpperCase()
+                avatarInitials: initials,
+                interests: ['General']
             });
         } catch (err) {
-            if (err.code !== 11000) throw err;
-            // The email itself may have been registered concurrently.
-            const existing = await User.findOne({ email });
-            if (existing) return existing;
-        }
-    }
-    throw new Error('Could not allocate a unique username');
-}
-
-// Request OTP
-router.post('/request-otp', async (req, res, next) => {
-    try {
-        const { config, emailService } = req.app.locals;
-        const rawEmail = req.body && req.body.email;
-        if (!rawEmail) {
-            return res.status(400).json({ error: 'Email is required' });
-        }
-
-        const email = normalizeEmail(rawEmail);
-        if (!email) {
-            return res.status(400).json({ error: 'Please enter a valid email address' });
-        }
-
-        if (!emailService.isConfigured()) {
-            return res.status(503).json({ error: 'Email sign-in is temporarily unavailable because no email provider is configured on the server.' });
-        }
-
-        // Per-address limits: a short cooldown between sends and a cap per hour.
-        // The per-IP limiter in app.js bounds abuse across many addresses.
-        const now = new Date();
-        const existing = await OTPVerification.findOne({ email }).lean();
-
-        if (existing && existing.lastSentAt && now - existing.lastSentAt < OTP_RESEND_COOLDOWN_MS) {
-            return rateLimited(res, OTP_RESEND_COOLDOWN_MS - (now - existing.lastSentAt),
-                'Please wait before requesting another code.');
-        }
-
-        const windowActive = existing && existing.windowStartedAt && now - existing.windowStartedAt < OTP_SEND_WINDOW_MS;
-        const windowStartedAt = windowActive ? new Date(existing.windowStartedAt) : now;
-        const sendCount = (windowActive ? existing.sendCount || 0 : 0) + 1;
-        if (sendCount > OTP_MAX_SENDS_PER_WINDOW) {
-            return rateLimited(res, OTP_SEND_WINDOW_MS - (now - windowStartedAt),
-                'Too many codes have been requested for this email. Please try again later.');
-        }
-
-        // 1. Generate secure random 6-digit OTP and keep only its HMAC
-        const code = generateOtp();
-        const codeHash = hashOtp(config.jwt.accessSecret, email, code);
-        const record = {
-            email,
-            codeHash,
-            codeExpiresAt: new Date(now.getTime() + OTP_TTL_MS),
-            attempts: 0,
-            consumedAt: null,
-            lastSentAt: now,
-            sendCount,
-            windowStartedAt,
-            expiresAt: new Date(Math.max(windowStartedAt.getTime() + OTP_SEND_WINDOW_MS, now.getTime() + OTP_TTL_MS)),
-            createdAt: now
-        };
-
-        // 2. Store it, replacing any previous code for this address. The
-        //    lastSentAt guard makes concurrent requests lose instead of both sending.
-        if (existing) {
-            const result = await OTPVerification.replaceOne(
-                { _id: existing._id, lastSentAt: existing.lastSentAt || null },
-                record
-            );
-            if (result.matchedCount === 0) {
-                return rateLimited(res, OTP_RESEND_COOLDOWN_MS, 'Please wait before requesting another code.');
+            if (err.code === 11000) {
+                return fieldErrors(res, 409, duplicateFields(err.keyPattern), 'Some of these details are already in use.');
             }
-        } else {
-            try {
-                await OTPVerification.create(record);
-            } catch (err) {
-                if (err.code === 11000) {
-                    return rateLimited(res, OTP_RESEND_COOLDOWN_MS, 'Please wait before requesting another code.');
-                }
-                throw err;
-            }
+            throw err;
         }
 
-        // 3. Send it. Success is only reported once the provider accepts the message.
-        try {
-            const delivery = await emailService.sendOtp(email, code, OTP_TTL_MS / 60000);
-            console.log(`[AUTH] Verification code for ${maskEmail(email)} accepted by ${delivery.provider} (message id ${delivery.id})`);
-        } catch (err) {
-            // Don't leave a usable code behind for an email that never went out,
-            // and hand the cooldown back so the user can retry straight away.
-            await OTPVerification.updateOne(
-                { email, codeHash },
-                { $set: { codeHash: null, lastSentAt: (existing && existing.lastSentAt) || null } }
-            );
-
-            if (err instanceof EmailNotConfiguredError) {
-                return res.status(503).json({ error: 'Email sign-in is temporarily unavailable because no email provider is configured on the server.' });
-            }
-            const detail = err.providerError ? ` (${err.providerError.name || 'provider error'}${err.providerError.statusCode ? ' ' + err.providerError.statusCode : ''})` : '';
-            console.error(`[AUTH] Failed to send verification code to ${maskEmail(email)}: ${err.message}${detail}`);
-            if (err.rateLimited) {
-                res.set('Retry-After', '60');
-                return res.status(503).json({ error: 'Our email service is busy right now. Please try again in a minute.', retryAfter: 60 });
-            }
-            return res.status(502).json({ error: 'We could not send the verification email. Please try again in a few minutes.' });
-        }
-
-        res.json({
-            message: 'Verification code sent. It can take a minute to arrive, so check your spam folder too.',
-            expiresInSeconds: OTP_TTL_MS / 1000,
-            resendAvailableInSeconds: OTP_RESEND_COOLDOWN_MS / 1000
+        const accessToken = issueSession(res, config, user);
+        res.status(201).json({
+            message: 'Account created successfully',
+            token: accessToken,
+            accessToken: accessToken,
+            user: sessionUser(user)
         });
-
     } catch (error) {
         next(error);
     }
 });
 
-// Verify OTP
-router.post('/verify-otp', async (req, res, next) => {
+router.post('/signup', async (req, res, next) => {
     try {
         const { config } = req.app.locals;
-        const { email: rawEmail, code: rawCode } = req.body || {};
-        if (!rawEmail || !rawCode) {
-            return res.status(400).json({ error: 'Email and verification code are required' });
+        const { values, errors } = validateSignup(req.body || {});
+        if (Object.keys(errors).length) return fieldErrors(res, 400, errors);
+
+        const [usernameTaken, emailTaken] = await Promise.all([
+            isUsernameTaken(values.username),
+            isEmailTaken(values.email)
+        ]);
+        if (usernameTaken || emailTaken) {
+            return fieldErrors(res, 409, {
+                ...(usernameTaken ? duplicateFields({ username: 1 }) : {}),
+                ...(emailTaken ? duplicateFields({ email: 1 }) : {})
+            }, 'Some of these details are already in use.');
         }
 
-        const email = normalizeEmail(rawEmail);
-        const code = typeof rawCode === 'string' ? rawCode.trim() : '';
-        if (!email || !isWellFormedOtp(code)) {
-            return res.status(400).json({ error: 'Enter the 6-digit code from your email', reason: 'invalid_request' });
-        }
-
-        // 1. Count the attempt atomically *before* comparing, so parallel
-        //    guesses cannot all slip in under the attempt limit.
-        const now = new Date();
-        const otpRecord = await OTPVerification.findOneAndUpdate(
-            {
-                email,
-                codeHash: { $type: 'string' },
-                consumedAt: null,
-                codeExpiresAt: { $gt: now },
-                attempts: { $lt: OTP_MAX_ATTEMPTS }
-            },
-            { $inc: { attempts: 1 } },
-            { returnDocument: 'after' }
-        );
-
-        if (!otpRecord) {
-            const current = await OTPVerification.findOne({ email }).lean();
-            let error = INVALID_CODE_ERROR;
-            let reason = 'invalid_code';
-            if (current && current.codeHash && current.attempts >= OTP_MAX_ATTEMPTS) {
-                error = 'Too many attempts. Please request a new code.';
-                reason = 'too_many_attempts';
-            } else if (current && current.codeHash && current.codeExpiresAt && current.codeExpiresAt <= now) {
-                error = 'This code has expired. Please request a new one.';
-                reason = 'expired';
-            }
-            return res.status(400).json({ error, reason });
-        }
-
-        // 2. Compare against the stored HMAC (constant time)
-        if (!otpMatches(config.jwt.accessSecret, email, code, otpRecord.codeHash)) {
-            const remaining = OTP_MAX_ATTEMPTS - otpRecord.attempts;
-            return res.status(400).json(remaining > 0
-                ? { error: `Incorrect code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`, reason: 'incorrect_code', attemptsRemaining: remaining }
-                : { error: 'Too many attempts. Please request a new code.', reason: 'too_many_attempts', attemptsRemaining: 0 });
-        }
-
-        // 3. Consume it: only one request can ever win this update.
-        const consumed = await OTPVerification.findOneAndUpdate(
-            { _id: otpRecord._id, codeHash: otpRecord.codeHash, consumedAt: null },
-            { $set: { consumedAt: now, codeHash: null } }
-        );
-        if (!consumed) {
-            return res.status(400).json({ error: INVALID_CODE_ERROR, reason: 'invalid_code' });
-        }
-
-        // Check if user exists
-        let user = await User.findOne({ email });
-        let isNewUser = false;
-
-        if (!user) {
-            // Auto-create user account
-            isNewUser = true;
-            user = await createUserForEmail(email);
-            console.log(`[AUTH] Created account for ${maskEmail(email)}`);
-        } else {
-            // User exists but may not have completed profile setup
-            isNewUser = !user.isVerified;
-            if (!user.isEmailVerified) {
-                await User.updateOne({ _id: user._id }, { $set: { isEmailVerified: true } });
-            }
+        const passwordHash = await hashPassword(req.body.password);
+        let user;
+        try {
+            user = await User.create({
+                name: values.displayName,
+                ...values,
+                passwordHash,
+                passwordChangedAt: new Date(),
+                profileCompleted: false,
+                isVerified: false,
+                isEmailVerified: false,
+                avatarInitials: values.displayName.substring(0, 2).toUpperCase()
+            });
+        } catch (err) {
+            // A concurrent signup won the race for the same username or email.
+            if (err.code === 11000) return fieldErrors(res, 409, duplicateFields(err.keyPattern), 'Some of these details are already in use.');
+            throw err;
         }
 
         const accessToken = issueSession(res, config, user);
-
-        res.json({
-            message: 'Login successful',
+        res.status(201).json({
+            message: 'Account created',
             token: accessToken,
-            isNewUser,
+            accessToken: accessToken,
             user: sessionUser(user)
         });
+    } catch (error) {
+        next(error);
+    }
+});
 
+// Log in with a username or email address and a password.
+router.post('/login', async (req, res, next) => {
+    try {
+        const { config } = req.app.locals;
+        const body = req.body || {};
+        const loginId = body.identifier || body.email || body.username;
+        const lookup = parseLoginIdentifier(loginId);
+        const { password } = body;
+        if (!lookup || typeof password !== 'string' || password.length === 0) {
+            return res.status(400).json({ error: 'Enter your username or email and your password.' });
+        }
+        if (password.length > MAX_LOGIN_PASSWORD_LENGTH) {
+            return res.status(401).json({ error: INVALID_CREDENTIALS });
+        }
+
+        const user = await findAccount(lookup, '+passwordHash');
+        // Accounts from the retired email sign-in have no password; they get
+        // the same answer as a wrong password (see README: account recovery).
+        const valid = user && user.passwordHash
+            ? await verifyPassword(user.passwordHash, password)
+            : await burnVerificationTime(password);
+        if (!valid) return res.status(401).json({ error: INVALID_CREDENTIALS });
+
+        if (needsRehash(user.passwordHash)) {
+            await User.updateOne({ _id: user._id }, { $set: { passwordHash: await hashPassword(password) } });
+        }
+
+        const accessToken = issueSession(res, config, user);
+        res.json({
+            message: 'Logged in',
+            token: accessToken,
+            accessToken: accessToken,
+            user: sessionUser(user)
+        });
     } catch (error) {
         next(error);
     }
@@ -358,8 +449,9 @@ router.post('/refresh', async (req, res, next) => {
     }
 });
 
-// Logout: revoke every refresh token issued to this account, then clear the cookie.
-// Access tokens are stateless and remain valid until they expire (15 minutes).
+// Logout: revoke every refresh token issued to this account (so it signs out
+// every device), then clear the cookie. Access tokens are stateless and remain
+// valid until they expire (15 minutes).
 router.post('/logout', async (req, res, next) => {
     try {
         const { config } = req.app.locals;
@@ -382,13 +474,94 @@ router.post('/logout', async (req, res, next) => {
     }
 });
 
-// Get current user
-router.get('/me', auth, async (req, res, next) => {
+// Set or change the password of the signed-in account. Accounts from the
+// retired email sign-in have no password yet; while they still hold a valid
+// session they can set one here without a current password. Every other
+// session is signed out; this device gets a fresh one.
+router.post('/change-password', auth.allowIncompleteProfile, async (req, res, next) => {
+    try {
+        const { config } = req.app.locals;
+        if (!isObjectId(req.user.userId)) return res.status(401).json({ error: 'Token is not valid' });
+        const user = await User.findById(req.user.userId).select('+passwordHash');
+        if (!user) return res.status(401).json({ error: 'Token is not valid' });
+
+        const { currentPassword, newPassword, confirmPassword } = req.body || {};
+        const hadPassword = Boolean(user.passwordHash);
+        const fields = {};
+
+        if (hadPassword) {
+            if (typeof currentPassword !== 'string' || currentPassword.length === 0) {
+                fields.currentPassword = 'Enter your current password';
+            } else if (currentPassword.length > MAX_LOGIN_PASSWORD_LENGTH || !(await verifyPassword(user.passwordHash, currentPassword))) {
+                fields.currentPassword = 'Your current password is incorrect';
+            }
+        }
+        const problem = passwordProblem(newPassword, { username: user.username, email: user.email });
+        if (problem) fields.newPassword = problem;
+        else if (hadPassword && newPassword === currentPassword) fields.newPassword = 'Choose a password different from your current one';
+        if (typeof confirmPassword !== 'string' || confirmPassword !== newPassword) fields.confirmPassword = 'Passwords do not match';
+
+        if (Object.keys(fields).length) return fieldErrors(res, 400, fields, fields.currentPassword || FIX_FIELDS);
+
+        const passwordHash = await hashPassword(newPassword);
+        const updated = await User.findOneAndUpdate(
+            { _id: user._id },
+            { $set: { passwordHash, passwordChangedAt: new Date() }, $inc: { tokenVersion: 1 } },
+            { returnDocument: 'after' }
+        );
+        if (!updated) return res.status(401).json({ error: 'Token is not valid' });
+
+        const accessToken = issueSession(res, config, updated);
+        res.json({
+            message: hadPassword ? 'Password changed. Your other devices have been signed out.' : 'Password set.',
+            token: accessToken,
+            user: sessionUser(updated)
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Set a new password with a one-time link from scripts/issue-password-link.js.
+// Signs out every existing session of the account.
+router.post('/password-reset', async (req, res, next) => {
+    try {
+        const { token, password, confirmPassword } = req.body || {};
+        const record = await findPasswordSetupToken(token);
+        if (!record) return res.status(400).json({ error: INVALID_LINK, reason: 'invalid_link' });
+
+        const user = await User.findById(record.user).select('_id username email');
+        if (!user) return res.status(400).json({ error: INVALID_LINK, reason: 'invalid_link' });
+
+        const fields = {};
+        const problem = passwordProblem(password, { username: user.username, email: user.email });
+        if (problem) fields.password = problem;
+        if (typeof confirmPassword !== 'string' || confirmPassword !== password) fields.confirmPassword = 'Passwords do not match';
+        if (Object.keys(fields).length) return fieldErrors(res, 400, fields);
+
+        const passwordHash = await hashPassword(password);
+        if (!(await consumePasswordSetupToken(record))) {
+            return res.status(400).json({ error: INVALID_LINK, reason: 'invalid_link' });
+        }
+        await User.updateOne(
+            { _id: user._id },
+            { $set: { passwordHash, passwordChangedAt: new Date() }, $inc: { tokenVersion: 1 } }
+        );
+
+        res.json({ message: 'Your password is set. You can log in now.', username: user.username });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Get current user. Reachable before profile setup is finished: the setup page
+// needs it.
+router.get('/me', auth.allowIncompleteProfile, async (req, res, next) => {
     try {
         if (!isObjectId(req.user.userId)) return res.status(401).json({ error: 'Token is not valid' });
 
         const user = await User.findById(req.user.userId)
-            .select('-otpCode -otpExpires -tokenVersion')
+            .select('+passwordHash')
             .populate('followers', 'username displayName avatarInitials')
             .populate('following', 'username displayName avatarInitials')
             .populate('showcaseCabinet')
@@ -399,16 +572,9 @@ router.get('/me', auth, async (req, res, next) => {
         const achievements = await getDynamicAchievements(user._id, user);
 
         res.json({
-            _id: user._id,
-            email: user.email,
-            username: user.username,
-            displayName: user.displayName,
-            profilePhoto: user.profilePhoto || '',
-            avatarUrl: user.avatarUrl || user.profilePhoto || '',
-            avatarInitials: user.avatarInitials,
-            bio: user.bio || '',
-            interests: user.interests || [],
-            isVerified: user.isVerified,
+            ...sessionUser(user),
+            reputation: user.reputation,
+            hasPassword: Boolean(user.passwordHash),
             followers: user.followers,
             following: user.following,
             showcaseCabinet: user.showcaseCabinet,

@@ -1,7 +1,6 @@
 require('dotenv').config({ quiet: true });
 const mongoose = require('mongoose');
 const { loadConfig, assertValidConfig } = require('./config/env');
-const { createEmailService } = require('./lib/email');
 const { startAuctionCloser } = require('./lib/auctions');
 const { createApp } = require('./app');
 
@@ -15,10 +14,8 @@ async function main() {
         process.exit(1);
     }
 
-    const emailService = createEmailService(config.email);
-    const { server, io } = createApp({ config, emailService });
+    const { server, io } = createApp({ config });
 
-    console.log(`📧 Email delivery: ${emailService.describe()}`);
     console.log(`🌐 Allowed CORS origins: ${config.corsOrigins.join(', ') || '(none)'}`);
 
     let stopAuctionCloser = null;

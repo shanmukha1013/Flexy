@@ -73,14 +73,15 @@ describe('users', () => {
         assert.equal((await User.findById(a._id)).displayName, a.displayName);
     });
 
-    test('completing profile setup without a bio marks the profile verified', async () => {
+    test('completing profile setup without a bio marks the profile complete', async () => {
         const { app, config } = h.buildApp();
-        const user = await h.createUser({ isVerified: false, username: 'user_abcdef12' });
+        const user = await h.createUser({ isVerified: false, profileCompleted: false, interests: [], username: 'user_abcdef12' });
         const res = await request(app).put(`/api/users/${user._id}`).set(h.authHeader(config, user)).send({
             displayName: 'Shan', username: 'shan_collects', bio: '', interests: ['Coins'], avatarUrl: PNG
         });
         assert.equal(res.status, 200);
-        assert.equal(res.body.isVerified, true);
+        assert.equal(res.body.profileCompleted, true);
+        assert.equal(res.body.isVerified, undefined);
         assert.equal(res.body.username, 'shan_collects');
         assert.equal(res.body.avatarUrl, PNG);
     });

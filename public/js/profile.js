@@ -40,10 +40,21 @@ class ProfileApp {
     }
 
     renderHeader() {
-        document.title = `${this.profileData.displayName || this.profileData.username} | FLEXY`;
+        document.title = `${this.profileData.displayName || this.profileData.name || this.profileData.username} | FLEXY`;
         
-        document.getElementById('profile-name').textContent = this.profileData.displayName || this.profileData.username;
+        document.getElementById('profile-name').textContent = this.profileData.displayName || this.profileData.name || this.profileData.username;
         document.getElementById('profile-username').textContent = `@${this.profileData.username}`;
+        
+        const emailEl = document.getElementById('profile-email');
+        if (emailEl) {
+            if (this.isMyProfile && this.profileData.email) {
+                emailEl.textContent = this.profileData.email;
+                emailEl.style.display = 'block';
+            } else {
+                emailEl.style.display = 'none';
+            }
+        }
+        
         document.getElementById('profile-bio').textContent = this.profileData.bio || 'No bio provided.';
         
         const avatarEl = document.getElementById('profile-avatar');

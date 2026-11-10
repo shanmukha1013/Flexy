@@ -1,7 +1,7 @@
 // Legacy demo login (retired).
 // The prototype that used this file simulated OTP delivery with a hardcoded
 // code and stored fake "token_user_..." sessions in localStorage, on the same
-// origin as the real app. Real sign-in is the email OTP flow at /login.html.
+// origin as the real app. Real sign-in (username or email and password) is at /login.html.
 (function () {
     var token = localStorage.getItem('flexy_token');
     // Real access tokens are JWTs (three dot-separated parts).

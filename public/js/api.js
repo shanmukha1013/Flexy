@@ -109,17 +109,20 @@ class ApiClient {
     // ({ "error": "..." }) instead of the raw response body.
     async toError(res) {
         let message = `Request failed (${res.status})`;
+        let reason;
         try {
             const text = await res.text();
             try {
                 const data = JSON.parse(text);
                 message = data.error || data.message || message;
+                reason = data.reason;
             } catch (e) {
                 if (text && text.length < 200) message = text;
             }
         } catch (e) { /* keep default message */ }
         const error = new Error(message);
         error.status = res.status;
+        error.reason = reason;
         return error;
     }
 
@@ -139,7 +142,14 @@ class ApiClient {
             }
         }
 
-        if (!res.ok) throw await this.toError(res);
+        if (!res.ok) {
+            const error = await this.toError(res);
+            // The server refuses marketplace actions until profile setup is done.
+            if (error.reason === 'profile_incomplete' && !window.location.pathname.includes('profile-setup.html')) {
+                window.location.href = 'profile-setup.html';
+            }
+            throw error;
+        }
         return res.json();
     }
 
@@ -155,7 +165,8 @@ class ApiClient {
         return this.request('PUT', endpoint, data === undefined ? {} : data);
     }
 
-    // Revokes the refresh token server-side, then clears the local session.
+    // Revokes the account's refresh tokens server-side (every device), then
+    // clears the local session.
     async logout() {
         try {
             await fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' });
@@ -163,7 +174,8 @@ class ApiClient {
         this.token = null;
         localStorage.removeItem('flexy_token');
         localStorage.removeItem('flexy_user');
-        sessionStorage.removeItem('flexy_pending_otp');
+        sessionStorage.removeItem('accessToken');
+        sessionStorage.removeItem('user');
         window.location.href = 'login.html';
     }
 }
@@ -700,19 +712,29 @@ async function initGlobalProfile() {
         }
 
         if (user) {
-            // Onboarding check
-            if (!user.isVerified) {
-                if (!window.location.pathname.includes('profile-setup.html') && 
-                    !window.location.pathname.includes('login.html') && 
+            // Onboarding check. This only saves a round trip: the server
+            // itself refuses marketplace actions until the profile is complete.
+            if (!user.profileCompleted) {
+                if (!window.location.pathname.includes('profile-setup.html') &&
+                    !window.location.pathname.includes('login.html') &&
                     !window.location.pathname.includes('index.html')) {
                     window.location.href = 'profile-setup.html';
                     return;
                 }
             } else {
-                // If verified but somehow on profile-setup, redirect to home
+                // Complete but somehow on profile-setup: go home
                 if (window.location.pathname.includes('profile-setup.html')) {
                     window.location.href = 'home.html';
                     return;
+                }
+            }
+
+            // Accounts from the old email sign-in have no password and can only
+            // stay signed in until their session expires. Remind them once per visit.
+            if (user.hasPassword === false && !sessionStorage.getItem('flexy_password_nudge')) {
+                sessionStorage.setItem('flexy_password_nudge', '1');
+                if (typeof notify === 'function') {
+                    notify('Your account has no password yet. Set one in Settings, under Security, so you can keep logging in.', 'warning', 10000);
                 }
             }
             // Update Navbar across all pages
@@ -882,6 +904,22 @@ window.unfollowUser = async function(id) {
     }
 };
 
+// Settings sidebar: shows one section at a time (settings.html#security opens
+// that section directly). Items without a section are ignored.
+window.switchSection = function(name, item) {
+    const section = document.getElementById(`section-${name}`);
+    if (!section) return;
+    document.querySelectorAll('.settings-section').forEach(s => s.classList.toggle('active', s === section));
+    document.querySelectorAll('.settings-sidebar .sidebar-item').forEach(i => i.classList.toggle('active', i === item));
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+    const name = window.location.hash.slice(1);
+    if (!name || !document.getElementById(`section-${name}`)) return;
+    const item = document.querySelector(`.settings-sidebar .sidebar-item[onclick*="'${name}'"]`);
+    window.switchSection(name, item);
+});
+
 window.settings = window.settings || {};
 window.settings.markDirty = function() {
     const saveBtn = document.getElementById('save-settings-btn');
@@ -896,8 +934,12 @@ window.settings.saveSetting = function(key, value) {
 window.settings.changeEmail = function() {
     notify("Please contact administration to request a change of registered email address.", 'info');
 };
+// Logging out revokes every refresh token of the account, so it signs out all
+// devices, this one included.
 window.settings.logoutAll = function() {
-    notify("Initiated security protocol: Logged out from all other active sessions.", 'info');
+    if (confirm("Sign out on every device, including this one?")) {
+        api.logout();
+    }
 };
 window.settings.deleteAccount = function() {
     if (confirm("Are you sure you want to permanently delete your collector legacy on Flexy? This action is irreversible.")) {

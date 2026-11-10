@@ -422,9 +422,18 @@
 
 <script>
 
-// YOUR RENDER BACKEND URL
-const API_BASE = "https://flexy-peach.vercel.app";
+// API BACKEND CONFIGURATION
+const PRODUCTION_BACKEND_URL = 'https://flexy-backend-pgw7.onrender.com';
+const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const API_BASE = (isLocal ? 'http://' + window.location.hostname + ':3001' : PRODUCTION_BACKEND_URL) + '/api';
 
+// Redirect if already authenticated
+(function checkExistingSession() {
+    const existingToken = localStorage.getItem('flexy_token') || sessionStorage.getItem('accessToken');
+    if (existingToken && window.location.search.indexOf('force=1') === -1) {
+        // User is already logged in
+    }
+})();
 
 // SHOW / HIDE PASSWORD
 document.querySelectorAll(".toggle-password")
@@ -501,7 +510,7 @@ document.getElementById("register-form")
         // NAME VALIDATION
         if (name.length < 2) {
             nameError.textContent =
-                "Please enter your full name.";
+                "Please enter your full name (at least 2 characters).";
             return;
         }
 
@@ -516,6 +525,11 @@ document.getElementById("register-form")
         if (password.length < 8) {
             passwordError.textContent =
                 "Password must contain at least 8 characters.";
+            return;
+        }
+        if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+            passwordError.textContent =
+                "Password must contain at least one letter and one number.";
             return;
         }
 
@@ -533,7 +547,7 @@ document.getElementById("register-form")
 
             // SEND REQUEST TO EXPRESS BACKEND
             const response = await fetch(
-                `${API_BASE}/api/auth/register`,
+                `${API_BASE}/auth/register`,
                 {
                     method: "POST",
 
@@ -546,19 +560,78 @@ document.getElementById("register-form")
                     body: JSON.stringify({
                         name,
                         email,
-                        password
+                        password,
+                        confirmPassword
                     })
                 }
             );
 
-            const data = await response.json();
+            // Safe parsing: Never blindly call response.json()
+            let data = null;
+            const responseText = await response.text();
+            if (responseText && responseText.trim().length > 0) {
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseError) {
+                    console.warn("Server response was not JSON:", responseText);
+                }
+            }
 
             if (!response.ok) {
-                throw new Error(
-                    data.message ||
-                    data.error ||
-                    "Registration failed. Please try again."
-                );
+                let errorMsg = "";
+                if (data && (data.error || data.message)) {
+                    errorMsg = data.error || data.message;
+                } else {
+                    switch (response.status) {
+                        case 400:
+                            errorMsg = "Invalid registration details. Please check the form.";
+                            break;
+                        case 401:
+                            errorMsg = "Unauthorized request. Please try again.";
+                            break;
+                        case 404:
+                            errorMsg = "Registration service endpoint not found (404).";
+                            break;
+                        case 405:
+                            errorMsg = "Method Not Allowed (405). Please check backend route configuration.";
+                            break;
+                        case 409:
+                            errorMsg = "An account with this email already exists. Log in instead.";
+                            break;
+                        case 422:
+                            errorMsg = "Validation failed. Please verify your details.";
+                            break;
+                        case 429:
+                            errorMsg = "Too many registration attempts. Please wait and try again.";
+                            break;
+                        case 500:
+                            errorMsg = "Server error occurred. Please try again shortly.";
+                            break;
+                        default:
+                            errorMsg = "Registration failed (HTTP " + response.status + "). Please try again.";
+                    }
+                }
+
+                // Map field-specific errors if returned
+                if (data && data.fields) {
+                    if (data.fields.name || data.fields.fullName) nameError.textContent = data.fields.name || data.fields.fullName;
+                    if (data.fields.email) emailError.textContent = data.fields.email;
+                    if (data.fields.password) passwordError.textContent = data.fields.password;
+                    if (data.fields.confirmPassword) confirmError.textContent = data.fields.confirmPassword;
+                }
+
+                throw new Error(errorMsg);
+            }
+
+            // Store authentication session if returned
+            const token = (data && (data.token || data.accessToken)) || null;
+            if (token) {
+                localStorage.setItem("flexy_token", token);
+                sessionStorage.setItem("accessToken", token);
+                if (data.user) {
+                    localStorage.setItem("flexy_user", JSON.stringify(data.user));
+                    sessionStorage.setItem("user", JSON.stringify(data.user));
+                }
             }
 
             showMessage(
@@ -568,10 +641,8 @@ document.getElementById("register-form")
 
             // REDIRECT TO LOGIN
             setTimeout(() => {
-
                 window.location.href = "login.html";
-
-            }, 1500);
+            }, 1200);
 
         } catch (error) {
 
