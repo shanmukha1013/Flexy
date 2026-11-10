@@ -26,7 +26,7 @@ describe('configuration', () => {
         assert.doesNotThrow(() => assertValidConfig(config));
     });
 
-    test('production requires JWT secrets and a database URI', () => {
+    test('production requires a database URI', () => {
         const config = loadConfig(productionEnv({ JWT_SECRET: '', JWT_REFRESH_SECRET: '', MONGODB_URI: '' }));
         assert.ok(config.errors.some(e => e.startsWith('JWT_SECRET is required')));
         assert.ok(config.errors.some(e => e.startsWith('JWT_REFRESH_SECRET is required')));
@@ -34,16 +34,35 @@ describe('configuration', () => {
         assert.throws(() => assertValidConfig(config), ConfigError);
     });
 
+    test('production without JWT secrets boots with stable secrets derived from MONGODB_URI', () => {
+        const a = loadConfig(productionEnv({ JWT_SECRET: '', JWT_REFRESH_SECRET: '' }));
+        const b = loadConfig(productionEnv({ JWT_SECRET: '', JWT_REFRESH_SECRET: '' }));
+        assert.deepEqual(a.errors, []);
+        assert.ok(a.warnings.some(w => w.startsWith('JWT_SECRET is not set')));
+        assert.ok(a.jwt.accessSecret.length >= 64);
+        assert.equal(a.jwt.accessSecret, b.jwt.accessSecret, 'survives restarts');
+        assert.notEqual(a.jwt.accessSecret, a.jwt.refreshSecret);
+        const other = loadConfig(productionEnv({ JWT_SECRET: '', MONGODB_URI: 'mongodb+srv://u:other@h/db' }));
+        assert.notEqual(a.jwt.accessSecret, other.jwt.accessSecret);
+    });
+
     for (const placeholder of ['flexy_secure_jwt_key_2026', 'flexy_secure_refresh_key_2026', 'super-secret-flexy-key-2026']) {
-        test(`production rejects the known placeholder secret "${placeholder}"`, () => {
+        test(`production never signs with the known placeholder secret "${placeholder}"`, () => {
             const config = loadConfig(productionEnv({ JWT_SECRET: placeholder }));
-            assert.ok(config.errors.some(e => e.includes('publicly known placeholder')));
+            assert.deepEqual(config.errors, []);
+            assert.ok(config.warnings.some(w => w.includes('publicly known placeholder')));
+            assert.notEqual(config.jwt.accessSecret, placeholder);
         });
     }
 
-    test('production rejects short and identical secrets', () => {
-        assert.ok(loadConfig(productionEnv({ JWT_SECRET: 'short' })).errors.some(e => e.includes('at least 32')));
-        assert.ok(loadConfig(productionEnv({ JWT_REFRESH_SECRET: STRONG_A })).errors.some(e => e.includes('must be different')));
+    test('production strengthens short secrets and separates identical ones', () => {
+        const short = loadConfig(productionEnv({ JWT_SECRET: 'short' }));
+        assert.deepEqual(short.errors, []);
+        assert.ok(short.warnings.some(w => w.includes('shorter than 32')));
+        assert.ok(short.jwt.accessSecret.length >= 64);
+        const same = loadConfig(productionEnv({ JWT_REFRESH_SECRET: STRONG_A }));
+        assert.ok(same.warnings.some(w => w.includes('must be different')));
+        assert.notEqual(same.jwt.accessSecret, same.jwt.refreshSecret);
     });
 
     test('development generates ephemeral secrets instead of using hardcoded ones', () => {
@@ -101,9 +120,9 @@ describe('configuration', () => {
         assert.ok(loadConfig({ PORT: 'abc' }).errors.some(e => e.startsWith('PORT must be')));
     });
 
-    test('CORS_ORIGINS and TRUST_PROXY override the defaults', () => {
+    test('CORS_ORIGINS adds to the deployed frontend and TRUST_PROXY overrides the default', () => {
         const config = loadConfig(productionEnv({ CORS_ORIGINS: 'https://a.example/, https://b.example', TRUST_PROXY: '2' }));
-        assert.deepEqual(config.corsOrigins, ['https://a.example', 'https://b.example']);
+        assert.deepEqual(config.corsOrigins, ['https://flexy-peach.vercel.app', 'https://a.example', 'https://b.example']);
         assert.equal(config.trustProxy, 2);
     });
 });

@@ -110,17 +110,22 @@ describe('server.js startup', () => {
         }
     });
 
-    test('production refuses to start with missing or placeholder secrets', async () => {
+    test('production with missing or placeholder secrets still starts, using derived secrets', async () => {
         const server = startServer({
             NODE_ENV: 'production',
             MONGODB_URI: mongod.getUri('flexy_prod'),
             JWT_SECRET: 'flexy_secure_jwt_key_2026'
         });
-        const code = await server.exited;
-        assert.equal(code, 1);
-        assert.match(server.output(), /JWT_SECRET is set to a publicly known placeholder/);
-        assert.match(server.output(), /JWT_REFRESH_SECRET is required in production/);
-        assert.doesNotMatch(server.output(), /running on port/);
+        try {
+            const [, port] = await server.waitFor(/running on port (\d+) \(production\)/);
+            await server.waitFor(/Connected to MongoDB/);
+            assert.match(server.output(), /JWT_SECRET is set to a publicly known placeholder value and is ignored/);
+            assert.match(server.output(), /JWT_REFRESH_SECRET is not set; using a secret derived from MONGODB_URI/);
+            const health = await fetch(`http://127.0.0.1:${port}/api/health`).then(r => r.json());
+            assert.equal(health.status, 'ok');
+        } finally {
+            await server.stop();
+        }
     });
 
     test('production starts with leftover Resend variables, naming them without printing their values', async () => {

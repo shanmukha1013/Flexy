@@ -54,19 +54,44 @@ function parseTrustProxy(value, isProduction) {
     return Number.isInteger(hops) && hops >= 0 ? hops : value;
 }
 
-function resolveSecret(name, value, { isProduction, errors, warnings }) {
+// In production a missing, short or publicly known secret must never be used,
+// but refusing to boot takes the whole site down (Render keeps serving the last
+// build that started). Instead derive a stable secret from MONGODB_URI, which
+// already holds the database password: it survives restarts, so sessions do too,
+// and anyone who could compute it already has full database access.
+function deriveSecret(name, seed) {
+    return crypto.createHmac('sha256', seed).update(`flexy:${name}`).digest('hex');
+}
+
+function resolveSecret(name, value, { isProduction, errors, warnings, seed }) {
+    const fallback = () => {
+        if (isProduction && seed) return deriveSecret(name, seed);
+        return crypto.randomBytes(48).toString('hex');
+    };
+    const fallbackNote = isProduction && seed
+        ? 'using a secret derived from MONGODB_URI instead. Set a strong value in the host environment'
+        : 'using a random per-process secret instead (sessions end when the server restarts)';
+    const generateHint = ` (generate one with: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))")`;
+
     if (!value) {
-        if (isProduction) {
-            errors.push(`${name} is required in production (generate one with: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))")`);
+        if (isProduction && !seed) {
+            errors.push(`${name} is required in production${generateHint}`);
             return null;
         }
-        warnings.push(`${name} is not set; using a random per-process secret. Sessions will not survive a server restart.`);
-        return crypto.randomBytes(48).toString('hex');
+        warnings.push(`${name} is not set; ${fallbackNote}${isProduction ? generateHint : ''}.`);
+        return fallback();
     }
     if (KNOWN_PLACEHOLDER_SECRETS.has(value)) {
-        (isProduction ? errors : warnings).push(`${name} is set to a publicly known placeholder value and must be replaced.`);
-    } else if (value.length < MIN_SECRET_LENGTH) {
-        (isProduction ? errors : warnings).push(`${name} must be at least ${MIN_SECRET_LENGTH} characters long.`);
+        warnings.push(`${name} is set to a publicly known placeholder value and is ignored; ${fallbackNote}.`);
+        return fallback();
+    }
+    if (value.length < MIN_SECRET_LENGTH) {
+        if (!isProduction) {
+            warnings.push(`${name} must be at least ${MIN_SECRET_LENGTH} characters long.`);
+            return value;
+        }
+        warnings.push(`${name} is shorter than ${MIN_SECRET_LENGTH} characters; strengthening it with MONGODB_URI. Set a longer value.`);
+        return seed ? deriveSecret(`${name}:${value}`, seed) : value;
     }
     return value;
 }
@@ -102,20 +127,24 @@ function loadConfig(env = process.env) {
         }
     }
 
-    const secretCtx = { isProduction, errors, warnings };
+    const secretCtx = { isProduction, errors, warnings, seed: mongoUri };
     const accessSecret = resolveSecret('JWT_SECRET', env.JWT_SECRET, secretCtx);
-    const refreshSecret = resolveSecret('JWT_REFRESH_SECRET', env.JWT_REFRESH_SECRET, secretCtx);
-    if (env.JWT_SECRET && env.JWT_SECRET === env.JWT_REFRESH_SECRET) {
-        (isProduction ? errors : warnings).push('JWT_SECRET and JWT_REFRESH_SECRET must be different values.');
+    let refreshSecret = resolveSecret('JWT_REFRESH_SECRET', env.JWT_REFRESH_SECRET, secretCtx);
+    if (accessSecret && accessSecret === refreshSecret) {
+        warnings.push('JWT_SECRET and JWT_REFRESH_SECRET must be different values; deriving a separate refresh secret.');
+        refreshSecret = deriveSecret('JWT_REFRESH_SECRET', accessSecret);
     }
 
     for (const name of OBSOLETE_VARIABLES) {
         if (env[name]) warnings.push(`${name} is no longer used (email sign-in was replaced by passwords) and can be removed.`);
     }
 
-    const corsOrigins = env.CORS_ORIGINS
-        ? parseList(env.CORS_ORIGINS)
-        : [...DEFAULT_FRONTEND_ORIGINS, ...(isProduction ? [] : DEFAULT_LOCAL_ORIGINS)];
+    // CORS_ORIGINS adds to the deployed frontend rather than replacing it, so a
+    // stale value on the host can never lock the real site out of the API.
+    const corsOrigins = [...new Set([
+        ...DEFAULT_FRONTEND_ORIGINS,
+        ...(env.CORS_ORIGINS ? parseList(env.CORS_ORIGINS) : (isProduction ? [] : DEFAULT_LOCAL_ORIGINS))
+    ])];
 
     return {
         nodeEnv,
