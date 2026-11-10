@@ -1,54 +1,647 @@
+
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Log in | FLEXY</title>
-    <meta name="description" content="Log in to Flexy, the marketplace for collectors.">
-    <link rel="stylesheet" href="css/style.css?v=4">
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+    <title>FLEXY - Login</title>
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #4b6021;
+            --primary-hover: #3d501a;
+            --text-primary: #202b3a;
+            --text-secondary: #58677b;
+            --border: #c9e9e4;
+            --background: #fcfaf7;
+            --input-background: #e7e6e1;
+            --danger: #dc2626;
+            --success: #22863a;
+        }
+
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .auth-container {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 25px;
+        }
+
+        .auth-card {
+            width: 100%;
+            max-width: 530px;
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 17px;
+            padding: 48px 45px;
+            box-shadow: 0 14px 28px rgba(30, 42, 35, 0.08);
+            animation: card-reveal 0.5s ease;
+        }
+
+        @keyframes card-reveal {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .logo-container {
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            margin: 0 auto 12px;
+            color: var(--primary);
+        }
+
+        .logo-text {
+            font-size: 35px;
+            font-weight: 750;
+            letter-spacing: -1px;
+            color: var(--text-primary);
+        }
+
+        .logo-subtext {
+            color: var(--text-secondary);
+            font-size: 16px;
+            margin-top: 5px;
+        }
+
+        .auth-form {
+            margin-top: 43px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #344054;
+            font-size: 15px;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+
+        .form-group input {
+            width: 100%;
+            height: 55px;
+            padding: 0 18px;
+            border: 1px solid #d5d3cd;
+            border-radius: 12px;
+            background: var(--input-background);
+            color: var(--text-primary);
+            font-size: 16px;
+            outline: none;
+            transition: 0.2s ease;
+        }
+
+        .form-group input::placeholder {
+            color: #718096;
+        }
+
+        .form-group input:focus {
+            background: #ffffff;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(75, 96, 33, 0.12);
+        }
+
+        .password-wrapper {
+            position: relative;
+        }
+
+        .password-wrapper input {
+            padding-right: 75px;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            color: var(--primary);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .password-options {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: -10px;
+        }
+
+        .forgot-link {
+            color: var(--primary);
+            font-size: 13px;
+            text-decoration: none;
+            transition: 0.2s;
+        }
+
+        .forgot-link:hover {
+            color: var(--primary-hover);
+            text-decoration: underline;
+        }
+
+        .btn {
+            width: 100%;
+            min-height: 50px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: 0.25s ease;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 12px 24px rgba(45, 61, 24, 0.13);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-block {
+            display: block;
+            margin-top: 35px;
+        }
+
+        .auth-inline-error {
+            color: var(--danger);
+            font-size: 12px;
+            margin-top: 6px;
+            min-height: 14px;
+        }
+
+        .auth-message {
+            display: none;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 13px;
+        }
+
+        .auth-message.error {
+            display: block;
+            color: #a12820;
+            background: #fff0ef;
+        }
+
+        .auth-message.success {
+            display: block;
+            color: #286332;
+            background: #edf7ed;
+        }
+
+        .auth-footer {
+            text-align: center;
+            margin-top: 25px;
+        }
+
+        .auth-footer p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .auth-footer a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .auth-footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 600px) {
+            .auth-container {
+                padding: 18px;
+            }
+
+            .auth-card {
+                padding: 38px 24px;
+            }
+
+            .logo-text {
+                font-size: 31px;
+            }
+
+            .auth-form {
+                margin-top: 35px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .auth-card {
+                padding: 30px 18px;
+            }
+
+            .form-group input {
+                font-size: 14px;
+            }
+        }
+    </style>
 </head>
-<body class="auth-page">
-    <main class="auth-container">
-        <div class="auth-card glass-card">
-            <div class="auth-brand">
-                <a href="index.html" aria-label="Flexy home">
-                    <span class="logo-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5 4 4"/><path d="m11 9 4 4"/><path d="m13 7-8 8"/><path d="M9 11l-4 4"/><path d="m13 13-7 7"/><path d="M20 20H10"/></svg>
-                    </span>
-                    <span class="auth-brand-name">FLEXY</span>
-                    <span class="auth-brand-tagline">Every Item Finds Its Value</span>
-                </a>
+
+<body>
+
+    <div class="auth-container">
+
+        <div class="auth-card">
+
+            <!-- FLEXY LOGO -->
+
+            <div class="logo-container"
+                 onclick="window.location.href='home.html'">
+
+                <div class="logo-icon">
+
+                    <svg viewBox="0 0 24 24"
+                         fill="none"
+                         stroke="currentColor"
+                         stroke-width="2.2"
+                         stroke-linecap="round"
+                         stroke-linejoin="round"
+                         width="100%"
+                         height="100%">
+
+                        <path d="m15 5 4 4"/>
+                        <path d="m11 9 4 4"/>
+                        <path d="m13 7-8 8"/>
+                        <path d="M9 11l-4 4"/>
+                        <path d="m13 13-7 7"/>
+                        <path d="M20 20H10"/>
+
+                    </svg>
+
+                </div>
+
+                <h1 class="logo-text">FLEXY</h1>
+
+                <p class="logo-subtext">
+                    Every Item Finds Its Value
+                </p>
+
             </div>
 
-            <h1 class="auth-title">Log in</h1>
-            <p class="auth-subtitle">Welcome back. Use your username or email.</p>
 
-            <div id="form-alert" class="auth-alert" role="alert"></div>
+            <!-- API ERROR / SUCCESS MESSAGE -->
 
-            <form id="login-form" novalidate>
-                <div class="auth-field">
-                    <label class="auth-label" for="identifier">Username or email</label>
-                    <input class="auth-input" id="identifier" name="identifier" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="254" required aria-describedby="identifier-error">
-                    <p class="auth-error" id="identifier-error"></p>
+            <div id="auth-message"
+                 class="auth-message"
+                 role="alert"
+                 aria-live="polite">
+            </div>
+
+
+            <!-- LOGIN FORM -->
+
+            <form id="login-form" class="auth-form">
+
+                <div class="form-group">
+
+                    <label for="email">Email Address or Username</label>
+
+                    <input
+                        type="text"
+                        id="email"
+                        name="email"
+                        placeholder="you@example.com or username"
+                        autocomplete="email"
+                        required>
+
+                    <p id="email-error"
+                       class="auth-inline-error"></p>
+
                 </div>
 
-                <div class="auth-field">
-                    <label class="auth-label" for="password">Password</label>
-                    <div class="auth-input-wrap">
-                        <input class="auth-input auth-input--with-toggle" id="password" name="password" type="password" autocomplete="current-password" maxlength="1024" required aria-describedby="password-error">
-                        <button type="button" class="auth-toggle" data-toggle-password="password" aria-controls="password" aria-label="Show password">Show</button>
+
+                <!-- PASSWORD -->
+
+                <div class="form-group">
+
+                    <label for="password">Password</label>
+
+                    <div class="password-wrapper">
+
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            placeholder="Enter your password"
+                            autocomplete="current-password"
+                            required>
+
+                        <button
+                            type="button"
+                            class="toggle-password"
+                            id="toggle-password">
+
+                            Show
+
+                        </button>
+
                     </div>
-                    <p class="auth-error" id="password-error"></p>
+
+                    <p id="password-error"
+                       class="auth-inline-error"></p>
+
                 </div>
 
-                <button type="submit" class="btn btn-primary auth-submit">Log in</button>
+
+                <!-- FORGOT PASSWORD -->
+
+                <div class="password-options">
+
+                    <a href="forgot-password.html"
+                       class="forgot-link">
+
+                        Forgot Password?
+
+                    </a>
+
+                </div>
+
+
+                <!-- LOGIN BUTTON -->
+
+                <button
+                    type="submit"
+                    class="btn btn-primary btn-block"
+                    id="login-button">
+
+                    <span id="submit-btn-text">
+                        Continue
+                    </span>
+
+                </button>
+
             </form>
 
-            <p class="auth-switch">New to Flexy? <a class="auth-link" href="signup.html">Create an account</a></p>
-        </div>
-    </main>
 
-    <script src="js/auth.js?v=4"></script>
+            <!-- REGISTER LINK -->
+
+            <div class="auth-footer">
+
+                <p>
+                    Don't have an account?
+
+                    <a href="register.html">
+                        Create Account
+                    </a>
+                </p>
+
+            </div>
+
+
+            <!-- SUPPORT -->
+
+            <div class="auth-footer">
+
+                <p>
+                    Need help?
+
+                    <a href="mailto:support@example.com">
+                        Contact Support
+                    </a>
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- INTERNAL JAVASCRIPT -->
+
+    <script>
+
+// API BACKEND CONFIGURATION
+const PRODUCTION_BACKEND_URL = 'https://flexy-backend-pgw7.onrender.com';
+const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const API_BASE = (isLocal ? 'http://' + window.location.hostname + ':3001' : PRODUCTION_BACKEND_URL) + '/api';
+
+// Redirect if already authenticated
+(function checkExistingSession() {
+    const existingToken = localStorage.getItem('flexy_token') || sessionStorage.getItem('accessToken');
+    if (existingToken && window.location.search.indexOf('logout=1') === -1) {
+        // User already has an active session
+    }
+})();
+
+// SHOW / HIDE PASSWORD
+document.getElementById("toggle-password")
+    .addEventListener("click", function () {
+
+        const password = document.getElementById("password");
+
+        if (password.type === "password") {
+            password.type = "text";
+            this.textContent = "Hide";
+        } else {
+            password.type = "password";
+            this.textContent = "Show";
+        }
+    });
+
+
+// DISPLAY MESSAGE
+function showMessage(message, type) {
+
+    const box = document.getElementById("auth-message");
+
+    box.textContent = message;
+    box.className = "auth-message " + type;
+}
+
+
+// LOGIN FORM
+document.getElementById("login-form")
+    .addEventListener("submit", async function (event) {
+
+        event.preventDefault();
+
+        const identifier = document.getElementById("email")
+            .value.trim();
+
+        const password = document.getElementById("password").value;
+
+        const emailError = document.getElementById("email-error");
+        const passwordError = document.getElementById("password-error");
+
+        const button = document.getElementById("login-button");
+        const buttonText = document.getElementById("submit-btn-text");
+
+        // Clear previous errors
+        emailError.textContent = "";
+        passwordError.textContent = "";
+
+        // Validate identifier
+        if (!identifier) {
+            emailError.textContent =
+                "Please enter your email address or username.";
+            return;
+        }
+
+        // Validate password
+        if (!password) {
+            passwordError.textContent =
+                "Password is required.";
+            return;
+        }
+
+        // Disable button while processing
+        button.disabled = true;
+        buttonText.textContent = "Signing in...";
+
+        try {
+
+            // Send login request to Express API
+            const response = await fetch(
+                `${API_BASE}/auth/login`,
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    credentials: "include",
+
+                    body: JSON.stringify({
+                        identifier: identifier,
+                        email: identifier,
+                        password: password
+                    })
+                }
+            );
+
+            // Safe parsing: Never blindly call response.json()
+            let data = null;
+            const responseText = await response.text();
+            if (responseText && responseText.trim().length > 0) {
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseError) {
+                    console.warn("Server response was not JSON:", responseText);
+                }
+            }
+
+            // Handle authentication failure
+            if (!response.ok) {
+                let errorMsg = "";
+                if (data && (data.error || data.message)) {
+                    errorMsg = data.error || data.message;
+                } else {
+                    switch (response.status) {
+                        case 400:
+                            errorMsg = "Please enter your username or email and your password.";
+                            break;
+                        case 401:
+                            errorMsg = "Incorrect username, email or password.";
+                            break;
+                        case 404:
+                            errorMsg = "Login service endpoint not found (404).";
+                            break;
+                        case 405:
+                            errorMsg = "Method Not Allowed (405). Please check backend route configuration.";
+                            break;
+                        case 429:
+                            errorMsg = "Too many login attempts. Please wait 15 minutes and try again.";
+                            break;
+                        case 500:
+                            errorMsg = "Server error occurred. Please try again shortly.";
+                            break;
+                        default:
+                            errorMsg = "Login failed (HTTP " + response.status + "). Please try again.";
+                    }
+                }
+                throw new Error(errorMsg);
+            }
+
+            // Verify access token exists
+            const token = (data && (data.token || data.accessToken)) || null;
+
+            if (!token) {
+                throw new Error(
+                    "Authentication response is incomplete."
+                );
+            }
+
+            // Store token in both localStorage (for app/profile/dashboard) and sessionStorage
+            localStorage.setItem("flexy_token", token);
+            sessionStorage.setItem("accessToken", token);
+
+            // Store authenticated user details in both localStorage and sessionStorage
+            if (data.user) {
+                localStorage.setItem("flexy_user", JSON.stringify(data.user));
+                sessionStorage.setItem("user", JSON.stringify(data.user));
+            }
+
+            // Display success
+            showMessage(
+                "Login successful! Redirecting to profile...",
+                "success"
+            );
+
+            // Redirect to profile
+            setTimeout(() => {
+                window.location.href = "profile.html";
+            }, 600);
+
+        } catch (error) {
+
+            console.error("Login error:", error);
+
+            showMessage(
+                error.message || "Unable to connect to server.",
+                "error"
+            );
+
+            button.disabled = false;
+            buttonText.textContent = "Continue";
+        }
+
+    });
+
+</script>
+
 </body>
 </html>

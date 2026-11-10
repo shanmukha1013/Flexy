@@ -174,6 +174,8 @@ class ApiClient {
         this.token = null;
         localStorage.removeItem('flexy_token');
         localStorage.removeItem('flexy_user');
+        sessionStorage.removeItem('accessToken');
+        sessionStorage.removeItem('user');
         window.location.href = 'login.html';
     }
 }

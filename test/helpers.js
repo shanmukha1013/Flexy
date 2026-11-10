@@ -41,7 +41,7 @@ function buildApp({ env, rateLimits } = {}) {
 }
 
 async function startDatabase() {
-    const mongod = await MongoMemoryServer.create();
+    const mongod = await MongoMemoryServer.create({ instance: { launchTimeout: 60000 } });
     await mongoose.connect(mongod.getUri('flexy_test'));
     // Build unique/TTL indexes up front so tests see production constraints.
     await Promise.all(mongoose.modelNames().map(name => mongoose.model(name).init()));

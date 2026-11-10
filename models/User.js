@@ -27,6 +27,10 @@ const UserSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
+    name: {
+        type: String,
+        trim: true
+    },
     // Argon2id hash (lib/passwords.js). Never selected unless a query asks for
     // it with select('+passwordHash'), so it cannot leak through a response.
     // Accounts created by the retired email sign-in have none until the owner

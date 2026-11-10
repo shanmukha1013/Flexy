@@ -38,6 +38,123 @@ async function insertLegacyUser(fields = {}) {
     return User.findById(insertedId);
 }
 
+
+const registerReq = (app, fields) => request(app).post('/api/auth/register').send(fields);
+
+describe('POST /api/auth/register', () => {
+    test('creates an account with name, email, password, confirmPassword and returns complete profile session', async () => {
+        const { app } = h.buildApp();
+        const res = await registerReq(app, {
+            name: 'Shan Reddy',
+            email: 'shanmukha@example.com',
+            password: 'SecurePassword123',
+            confirmPassword: 'SecurePassword123'
+        });
+        assert.equal(res.status, 201);
+        assert.ok(res.body.token);
+        assert.ok(res.body.accessToken);
+        assert.equal(res.body.user.displayName, 'Shan Reddy');
+        assert.equal(res.body.user.email, 'shanmukha@example.com');
+        assert.equal(res.body.user.profileCompleted, true);
+        assert.ok(res.body.user.username);
+
+        // Verify account in database
+        const dbUser = await User.findOne({ email: 'shanmukha@example.com' }).select('+passwordHash');
+        assert.ok(dbUser);
+        assert.equal(dbUser.displayName, 'Shan Reddy');
+        assert.ok(dbUser.passwordHash);
+        assert.notEqual(dbUser.passwordHash, 'SecurePassword123');
+        const valid = await argon2.verify(dbUser.passwordHash, 'SecurePassword123');
+        assert.equal(valid, true);
+    });
+
+    test('rejects duplicate email registration with 409', async () => {
+        const { app } = h.buildApp();
+        const res1 = await registerReq(app, {
+            name: 'First User',
+            email: 'duplicate@example.com',
+            password: 'StrongWatch1962',
+            confirmPassword: 'StrongWatch1962'
+        });
+        assert.equal(res1.status, 201);
+
+        const res2 = await registerReq(app, {
+            name: 'Second User',
+            email: 'duplicate@example.com',
+            password: 'AnotherWatch1962',
+            confirmPassword: 'AnotherWatch1962'
+        });
+        assert.equal(res2.status, 409);
+        assert.match(res2.body.error, /already exists/i);
+    });
+
+    test('validates invalid email, password mismatch and short password', async () => {
+        const { app } = h.buildApp();
+
+        // Invalid email
+        const resEmail = await registerReq(app, {
+            name: 'Test User',
+            email: 'not-an-email',
+            password: 'StrongWatch1962',
+            confirmPassword: 'StrongWatch1962'
+        });
+        assert.equal(resEmail.status, 400);
+
+        // Password mismatch
+        const resMismatch = await registerReq(app, {
+            name: 'Test User',
+            email: 'valid@example.com',
+            password: 'StrongWatch1962',
+            confirmPassword: 'DifferentWatch1962'
+        });
+        assert.equal(resMismatch.status, 400);
+        assert.match(resMismatch.body.error, /match/i);
+
+        // Short password
+        const resShort = await registerReq(app, {
+            name: 'Test User',
+            email: 'valid@example.com',
+            password: 'short',
+            confirmPassword: 'short'
+        });
+        assert.equal(resShort.status, 400);
+    });
+
+    test('logs in with email and password, and fails with invalid credentials', async () => {
+        const { app } = h.buildApp();
+        await registerReq(app, {
+            name: 'Login Test',
+            email: 'logintest@example.com',
+            password: 'ValidPassword123',
+            confirmPassword: 'ValidPassword123'
+        });
+
+        // Valid login with email
+        const loginRes = await request(app).post('/api/auth/login').send({
+            email: 'logintest@example.com',
+            password: 'ValidPassword123'
+        });
+        assert.equal(loginRes.status, 200);
+        assert.ok(loginRes.body.token);
+        assert.ok(loginRes.body.accessToken);
+        assert.equal(loginRes.body.user.email, 'logintest@example.com');
+
+        // Invalid password
+        const wrongPwRes = await request(app).post('/api/auth/login').send({
+            email: 'logintest@example.com',
+            password: 'WrongPassword999'
+        });
+        assert.equal(wrongPwRes.status, 401);
+
+        // Unknown email
+        const unknownRes = await request(app).post('/api/auth/login').send({
+            email: 'nobody@example.com',
+            password: 'ValidPassword123'
+        });
+        assert.equal(unknownRes.status, 401);
+    });
+});
+
 describe('POST /api/auth/signup', () => {
     test('creates an account with an Argon2id hash and returns a session', async () => {
         const { app, config } = h.buildApp();
@@ -127,7 +244,7 @@ describe('POST /api/auth/signup', () => {
 
     test('enforces the password policy and the confirmation', async () => {
         const { app } = h.buildApp();
-        const common = await signupReq(app, h.signupFields({ password: 'Password123', confirmPassword: 'Password123' }));
+        const common = await signupReq(app, h.signupFields({ password: 'password123', confirmPassword: 'password123' }));
         assert.match(common.body.fields.password, /too common/);
 
         const noDigit = await signupReq(app, h.signupFields({ password: 'only letters here', confirmPassword: 'only letters here' }));

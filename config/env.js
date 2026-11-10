@@ -25,7 +25,7 @@ const MIN_SECRET_LENGTH = 32;
 
 // The deployed Vercel frontend. Overridable with CORS_ORIGINS.
 const DEFAULT_FRONTEND_ORIGINS = ['https://flexy-peach.vercel.app'];
-const DEFAULT_LOCAL_ORIGINS = ['http://localhost:3001', 'http://127.0.0.1:3001'];
+const DEFAULT_LOCAL_ORIGINS = ['http://localhost:3001', 'http://127.0.0.1:3001', 'http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:5500', 'http://127.0.0.1:5500', 'http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:8080', 'http://127.0.0.1:8080'];
 const DEFAULT_LOCAL_MONGODB_URI = 'mongodb://127.0.0.1:27017/flexy';
 // Settings of the retired email (OTP) sign-in. They are ignored now; startup
 // names any that are still set so they can be removed. Values are never printed.

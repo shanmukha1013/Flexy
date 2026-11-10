@@ -98,6 +98,8 @@ function createApp({ config, rateLimits = {} }) {
     // Only POSTs are limited (CORS preflights must never count).
     const onPost = (handler) => (req, res, next) => (req.method === 'POST' ? handler(req, res, next) : next());
 
+    app.use('/api/auth/register', onPost(limiter('signup',
+        'Too many accounts have been created from this network. Please try again later.')));
     app.use('/api/auth/signup', onPost(limiter('signup',
         'Too many accounts have been created from this network. Please try again later.')));
     app.use('/api/auth/login', onPost(limiter('login',
@@ -108,9 +110,9 @@ function createApp({ config, rateLimits = {} }) {
         {
             skipSuccessfulRequests: true,
             // Requests without a usable identifier are left to the per-IP limit.
-            skip: (req) => !parseLoginIdentifier(req.body && req.body.identifier),
+            skip: (req) => !parseLoginIdentifier(req.body && (req.body.identifier || req.body.email || req.body.username)),
             keyGenerator: (req) => {
-                const lookup = parseLoginIdentifier(req.body.identifier);
+                const lookup = parseLoginIdentifier(req.body.identifier || req.body.email || req.body.username);
                 return lookup.email ? `email:${lookup.email}` : `username:${lookup.username}`;
             }
         })));
